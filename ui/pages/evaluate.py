@@ -5,141 +5,75 @@ from agent.graph import run_agent
 from mailer.emailer import send_report_email
 
 
-# ── Custom CSS — Onyx/deep blue professional theme ────────────────────────────
+# ── Custom CSS — Warm Neutral light theme overrides ───────────────────────────
 CUSTOM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
-html, body, [class*="css"] {
-    font-family: 'DM Sans', sans-serif;
-}
-
-/* Main container */
-.block-container {
-    padding-top: 2rem;
-    max-width: 1100px;
-}
-
-/* Metric cards for timing */
+/* Timing metric cards */
 .timing-card {
-    background: linear-gradient(135deg, #111827 0%, #1a2235 100%);
-    border: 1px solid #1e3a5f;
+    background: #ffffff;
+    border: 1px solid #e8e4dd;
     border-radius: 12px;
-    padding: 16px 20px;
+    padding: 18px 22px;
     margin: 4px 0;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .timing-label {
     font-size: 11px;
     font-weight: 600;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.07em;
     text-transform: uppercase;
-    color: #64748b;
-    margin-bottom: 4px;
+    color: #94a3b8;
+    margin-bottom: 6px;
 }
 .timing-value {
-    font-family: 'DM Mono', monospace;
-    font-size: 28px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 30px;
     font-weight: 500;
-    color: #2B7FFF;
+    color: #1a56db;
     line-height: 1;
 }
 .timing-sub {
     font-size: 11px;
-    color: #475569;
-    margin-top: 4px;
-}
-
-/* Drive toggle card */
-.drive-option-card {
-    background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
-    border: 1px solid #1e293b;
-    border-radius: 12px;
-    padding: 16px 20px;
-    margin: 12px 0;
+    color: #94a3b8;
+    margin-top: 5px;
 }
 
 /* Section headers */
 .section-header {
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.06em;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: #64748b;
-    margin: 24px 0 12px 0;
-    padding-bottom: 8px;
-    border-bottom: 1px solid #1e293b;
+    color: #94a3b8;
+    margin: 28px 0 14px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #e8e4dd;
 }
 
-/* Vendor expander styling */
-.vendor-tag {
-    display: inline-block;
-    background: #1e3a5f;
-    color: #2B7FFF;
-    border-radius: 6px;
-    padding: 2px 10px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-right: 6px;
-}
-
-/* Save indicator pill */
+/* Save indicator pills */
 .save-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #0f2a1a;
-    border: 1px solid #166534;
-    color: #4ade80;
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    color: #15803d;
     border-radius: 20px;
-    padding: 4px 12px;
+    padding: 5px 14px;
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
 }
 .nosave-pill {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    background: #1a1a0f;
-    border: 1px solid #713f12;
-    color: #fbbf24;
+    background: #fffbeb;
+    border: 1px solid #fcd34d;
+    color: #b45309;
     border-radius: 20px;
-    padding: 4px 12px;
+    padding: 5px 14px;
     font-size: 12px;
-    font-weight: 500;
-}
-
-/* Tab styling */
-.stTabs [data-baseweb="tab"] {
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.02em;
-}
-
-/* Buttons */
-.stButton > button[kind="primary"] {
-    background: linear-gradient(135deg, #1d4ed8, #2B7FFF);
-    border: none;
-    border-radius: 8px;
     font-weight: 600;
-    letter-spacing: 0.02em;
-    padding: 10px 24px;
-    transition: all 0.2s;
-}
-.stButton > button[kind="primary"]:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(43, 127, 255, 0.4);
-}
-
-/* Progress bar */
-.stProgress > div > div {
-    background: linear-gradient(90deg, #1d4ed8, #2B7FFF, #60a5fa);
-    border-radius: 4px;
-}
-
-/* Info/warning boxes */
-.stAlert {
-    border-radius: 10px;
-    border-left-width: 3px;
 }
 </style>
 """
@@ -238,7 +172,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
 
     for i, (icon, label) in enumerate(steps):
         status_text.markdown(
-            f"<p style='color:#94a3b8;font-size:13px'>{icon}&nbsp; {label}</p>",
+            f"<p style='color:#64748b;font-size:13px;font-weight:500'>{icon}&nbsp; {label}</p>",
             unsafe_allow_html=True
         )
         progress_bar.progress((i + 1) / len(steps) * 0.85)
@@ -255,7 +189,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
 
         progress_bar.progress(1.0)
         status_text.markdown(
-            "<p style='color:#4ade80;font-size:13px'>✓&nbsp; Evaluation complete</p>",
+            "<p style='color:#15803d;font-size:13px;font-weight:600'>✓&nbsp; Evaluation complete</p>",
             unsafe_allow_html=True
         )
         time.sleep(0.6)

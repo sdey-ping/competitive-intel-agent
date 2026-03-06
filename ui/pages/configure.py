@@ -41,15 +41,11 @@ def render():
                         # Feature 4: "Saved" indicator on click
                         st.markdown("""
                             <div style='display:flex;align-items:center;gap:8px;
-                                background:#0f2a1a;border:1px solid #166534;
+                                background:#f0fdf4;border:1px solid #86efac;
                                 border-radius:8px;padding:10px 16px;margin-top:8px'>
                                 <span style='font-size:16px'>✓</span>
-                                <span style='color:#4ade80;font-weight:600;font-size:14px'>
-                                    Saved
-                                </span>
-                                <span style='color:#64748b;font-size:13px'>
-                                    — {name} has been added to your competitor list.
-                                </span>
+                                <span style='color:#15803d;font-weight:600;font-size:14px'>Saved</span>
+                                <span style='color:#94a3b8;font-size:13px'>— {name} added to your competitor list.</span>
                             </div>
                         """.replace("{name}", name), unsafe_allow_html=True)
                         st.rerun()
@@ -112,9 +108,9 @@ def render():
                         # Feature 4: Saved indicator on edit save too
                         st.markdown("""
                             <div style='display:inline-flex;align-items:center;gap:6px;
-                                background:#0f2a1a;border:1px solid #166534;
+                                background:#f0fdf4;border:1px solid #86efac;
                                 border-radius:6px;padding:6px 14px;margin-top:4px'>
-                                <span style='color:#4ade80;font-weight:600;font-size:13px'>✓ Saved</span>
+                                <span style='color:#15803d;font-weight:600;font-size:13px'>✓ Saved</span>
                             </div>
                         """, unsafe_allow_html=True)
                         st.rerun()
