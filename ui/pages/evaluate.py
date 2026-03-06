@@ -1,7 +1,7 @@
 import streamlit as st
 from db.database import get_all_competitors
 from agent.graph import run_agent
-from email.emailer import send_report_email
+from mailer.emailer import send_report_email
 
 
 def render():
