@@ -12,6 +12,7 @@ class CompetitorRawData(TypedDict):
 
 class CompetitorSynthesis(TypedDict):
     vendor_name: str
+    direct_answer: str        # NEW: direct answer to the research question — shown first in UI
     recent_launches: str
     use_cases: str
     technical_details: str
@@ -33,7 +34,7 @@ class AgentState(TypedDict):
     # ── Inputs ────────────────────────────────
     vendors: List[str]
     research_query: str
-    save_to_drive: bool           # whether to upload report to Google Drive
+    save_to_drive: bool
 
     # ── Intermediate ──────────────────────────
     raw_data: List[CompetitorRawData]
@@ -45,8 +46,8 @@ class AgentState(TypedDict):
     gdrive_link: str
 
     # ── Timing ────────────────────────────────
-    analysis_duration_seconds: float     # time for agent analysis
-    drive_duration_seconds: float        # time for drive upload (0 if skipped)
+    analysis_duration_seconds: float
+    drive_duration_seconds: float
 
     # ── Meta ──────────────────────────────────
     errors: List[str]
