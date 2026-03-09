@@ -11,7 +11,7 @@ Built with **LangGraph + GPT-4o Vision + Streamlit**.
 | | |
 |---|---|
 | 🎬 **Demo Video** | [Watch on Google Drive](https://drive.google.com/file/d/1Z_xV1Lia8C7GkLupHmS4O31_ylxXI2Tx/view?usp=sharing) |
-| 🌐 **Live App** | [removed | available on request] |
+| 🌐 **Live App** | [removed, available on request] |
 | 💻 **GitHub** | [saparjaedu-blr/competitive-intel-agent](https://github.com/saparjaedu-blr/competitive-intel-agent) |
 
 ---
