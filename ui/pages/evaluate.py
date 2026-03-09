@@ -4,7 +4,6 @@ from db.database import get_all_competitors
 from mailer.emailer import send_report_email
 
 
-# ── Custom CSS — Warm Neutral light theme overrides ───────────────────────────
 CUSTOM_CSS = """
 <style>
 /* Timing metric cards */
@@ -49,6 +48,55 @@ CUSTOM_CSS = """
     border-bottom: 1px solid #e8e4dd;
 }
 
+/* Direct answer card — most prominent element */
+.direct-answer-card {
+    background: #eff6ff;
+    border: 1.5px solid #bfdbfe;
+    border-left: 4px solid #1a56db;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 8px 0 16px 0;
+}
+.direct-answer-vendor {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #1a56db;
+    margin-bottom: 8px;
+}
+.direct-answer-text {
+    font-size: 14px;
+    color: #1e3a5f;
+    line-height: 1.7;
+}
+
+/* Research question banner */
+.research-banner {
+    background: #f8faff;
+    border: 1px solid #e0e9ff;
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+.research-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #1a56db;
+    margin-bottom: 4px;
+}
+.research-text {
+    font-size: 13.5px;
+    color: #1e293b;
+    font-weight: 500;
+    line-height: 1.5;
+}
+
 /* Save indicator pills */
 .save-pill {
     display: inline-flex;
@@ -81,7 +129,6 @@ CUSTOM_CSS = """
 def render():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-    # Page header
     st.markdown("## Intelligence Evaluation")
     st.markdown(
         "<p style='color:#64748b;margin-top:-8px;font-size:14px'>"
@@ -94,14 +141,13 @@ def render():
         st.warning("No competitors configured yet. Go to **Configure Competitors** to add some.")
         return
 
-    # ── Research Configuration ─────────────────────────────────────────────────
     st.markdown("<div class='section-header'>Research Configuration</div>", unsafe_allow_html=True)
 
     research_query = st.text_area(
         "Research Focus",
-        placeholder="e.g. What AI model capabilities, API features, and pricing models are competitors shipping — and where are the key differentiation points?",
+        placeholder="e.g. How do Anthropic and OpenAI approach AI safety differently?",
         height=90,
-        help="Be specific. This drives the entire synthesis depth and direction.",
+        help="This is the primary question the entire report will answer. Be specific.",
         label_visibility="collapsed",
     )
 
@@ -112,7 +158,6 @@ def render():
         default=vendor_names,
     )
 
-    # ── Drive Save Option ──────────────────────────────────────────────────────
     st.markdown("<div class='section-header'>Report Persistence</div>", unsafe_allow_html=True)
 
     col_drive, col_info = st.columns([2, 3])
@@ -120,7 +165,7 @@ def render():
         save_to_drive = st.checkbox(
             "📤  Publish & Archive Report",
             value=False,
-            help="When enabled: saves to Report History, uploads to Google Drive, and enables the Drive link after completion."
+            help="When enabled: saves to Report History, uploads to Google Drive."
         )
     with col_info:
         if save_to_drive:
@@ -136,7 +181,6 @@ def render():
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── Run Button ─────────────────────────────────────────────────────────────
     run_button = st.button(
         "⚡  Run Intelligence Evaluation",
         type="primary",
@@ -150,7 +194,6 @@ def render():
             return
         _run_with_progress(selected_vendors, research_query, save_to_drive)
 
-    # ── Display Results ────────────────────────────────────────────────────────
     if "agent_result" in st.session_state:
         _render_results(st.session_state["agent_result"])
 
@@ -160,8 +203,6 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
 
     total_steps = len(PIPELINE_STEPS)
 
-    # ── UI placeholders ────────────────────────────────────────────────────────
-    # Progress bar + percentage on same row
     prog_col, pct_col = st.columns([11, 1])
     with prog_col:
         progress_bar = st.progress(0)
@@ -169,7 +210,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
         pct_text = st.empty()
 
     status_text  = st.empty()
-    live_preview = st.empty()   # streams partial synthesis as it arrives
+    live_preview = st.empty()
 
     pct_text.markdown(
         "<p style='font-family:JetBrains Mono,monospace;font-size:13px;"
@@ -189,7 +230,6 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
                 result = partial_state
                 break
 
-            # Advance real progress
             if node_name in PIPELINE_STEPS:
                 completed = PIPELINE_STEPS.index(node_name) + 1
             pct = int((completed / total_steps) * 100)
@@ -201,28 +241,27 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
             )
 
             icon, label = STEP_LABELS.get(node_name, ("⚙️", node_name))
-
-            # Show what just completed
             status_text.markdown(
                 f"<p style='color:#64748b;font-size:13px;font-weight:500'>"
                 f"<span style='color:#15803d'>✓</span>&nbsp; <b>{icon} {label}</b> — done</p>",
                 unsafe_allow_html=True
             )
 
-            # ── Live preview: stream synthesis results as they arrive ──────────
+            # Live preview: show direct_answer as it arrives (more relevant than launches)
             syntheses = partial_state.get("syntheses", [])
             if syntheses and node_name == "synthesizer":
                 preview_lines = []
                 for s in syntheses:
                     vendor = s.get("vendor_name", "")
-                    launches = (s.get("recent_launches") or "")[:300]
-                    if launches:
+                    # Prefer direct_answer for live preview — it's the most relevant content
+                    direct = (s.get("direct_answer") or s.get("recent_launches") or "")[:300]
+                    if direct:
                         preview_lines.append(
                             f"<div style='margin-bottom:12px'>"
                             f"<span style='font-size:11px;font-weight:700;letter-spacing:0.06em;"
                             f"text-transform:uppercase;color:#1a56db'>{vendor}</span>"
                             f"<p style='font-size:13px;color:#475569;margin:4px 0 0 0;"
-                            f"line-height:1.6'>{launches}…</p>"
+                            f"line-height:1.6'>{direct}…</p>"
                             f"</div>"
                         )
                 if preview_lines:
@@ -236,7 +275,6 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
                         unsafe_allow_html=True
                     )
 
-        # ── Done ──────────────────────────────────────────────────────────────
         analysis_duration = round(time.time() - analysis_start, 1)
 
         progress_bar.progress(1.0)
@@ -252,7 +290,6 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
         )
         time.sleep(0.8)
 
-        # Clear progress UI
         progress_bar.empty()
         pct_text.empty()
         status_text.empty()
@@ -275,6 +312,36 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
 
 def _render_results(result: dict):
     st.divider()
+
+    research_query = result.get("research_query", "")
+
+    # ── Research question reminder — keeps context visible ────────────────────
+    if research_query:
+        st.markdown(
+            f"<div class='research-banner'>"
+            f"<div>"
+            f"<div class='research-label'>🔍 Research Question</div>"
+            f"<div class='research-text'>{research_query}</div>"
+            f"</div></div>",
+            unsafe_allow_html=True
+        )
+
+    # ── Direct Answers — most prominent, shown first ───────────────────────────
+    syntheses = result.get("syntheses", [])
+    has_direct_answers = any(s.get("direct_answer") for s in syntheses)
+
+    if has_direct_answers:
+        st.markdown("<div class='section-header'>Direct Answers to Your Research Question</div>", unsafe_allow_html=True)
+        for synthesis in syntheses:
+            direct = synthesis.get("direct_answer", "").strip()
+            if direct:
+                st.markdown(
+                    f"<div class='direct-answer-card'>"
+                    f"<div class='direct-answer-vendor'>{synthesis['vendor_name']}</div>"
+                    f"<div class='direct-answer-text'>{direct}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
 
     # ── Timing Display ─────────────────────────────────────────────────────────
     analysis_secs = result.get("analysis_duration_seconds", 0)
@@ -305,7 +372,7 @@ def _render_results(result: dict):
                 <div class='timing-card'>
                     <div class='timing-label'>Total Duration</div>
                     <div class='timing-value'>{total}s</div>
-                    <div class='timing-sub'>{len(result.get("syntheses", []))} vendor(s) analyzed</div>
+                    <div class='timing-sub'>{len(syntheses)} vendor(s) analyzed</div>
                 </div>""", unsafe_allow_html=True)
     else:
         c1, c2 = st.columns(2)
@@ -317,7 +384,7 @@ def _render_results(result: dict):
                     <div class='timing-sub'>Scraping → Synthesis → Diff</div>
                 </div>""", unsafe_allow_html=True)
         with c2:
-            vendor_count = len(result.get("syntheses", []))
+            vendor_count = len(syntheses)
             per_vendor = round(analysis_secs / vendor_count, 1) if vendor_count else 0
             st.markdown(f"""
                 <div class='timing-card'>
@@ -343,11 +410,10 @@ def _render_results(result: dict):
                 else:
                     st.markdown(diff["delta_summary"])
 
-    # ── Per-Vendor Analysis ─────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Full Intelligence Report</div>", unsafe_allow_html=True)
-    syntheses = result.get("syntheses", [])
+    # ── Per-Vendor Deep Analysis ─────────────────────────────────────────────
+    st.markdown("<div class='section-header'>Full Supporting Intelligence</div>", unsafe_allow_html=True)
     for synthesis in syntheses:
-        with st.expander(f"  {synthesis['vendor_name']}", expanded=False):
+        with st.expander(f"  {synthesis['vendor_name']} — detailed breakdown", expanded=False):
             tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
                 "🚀 Launches",
                 "🎯 Use Cases",
