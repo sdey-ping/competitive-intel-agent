@@ -126,6 +126,41 @@ CUSTOM_CSS = """
 # Ordered list for rendering mode pills in UI
 MODE_ORDER = ["feature_deep_dive", "landscape_scan", "strategic", "battle_card"]
 
+# All 8 strategic sections in display order
+STRATEGIC_SECTION_DEFS = [
+    ("recent_launches",     "🚀 Launches"),
+    ("use_cases",           "🎯 Use Cases"),
+    ("technical_details",   "⚙️ Technical"),
+    ("ui_ux",               "🖥️ UI/UX"),
+    ("pricing_signals",     "💰 Pricing"),
+    ("strategic_direction", "🧭 Direction"),
+    ("gap_vs_your_product", "⚔️ Gaps"),
+    ("watch_points",        "👁️ Watch"),
+]
+
+# Phrases the LLM emits when a section is not relevant — treated as empty
+_IRRELEVANT_PHRASES = (
+    "not directly relevant",
+    "not found in available sources",
+    "not available",
+    "no data",
+    "n/a",
+)
+
+
+def _is_content_relevant(content: str) -> bool:
+    """Return True only if this section has real, substantive content."""
+    if not content:
+        return False
+    stripped = content.strip()
+    if not stripped or len(stripped) < 40:
+        return False
+    lower = stripped.lower()
+    for phrase in _IRRELEVANT_PHRASES:
+        if lower.startswith(phrase):
+            return False
+    return True
+
 
 def render():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -168,11 +203,9 @@ def render():
         unsafe_allow_html=True
     )
 
-    # Use session state to track selected mode
     if "selected_mode" not in st.session_state:
         st.session_state["selected_mode"] = "auto"
 
-    # Render mode pills as columns
     cols = st.columns(5)
 
     modes_with_auto = [("auto", "🤖", "Auto-Detect", "Let AI pick the best mode")] + [
@@ -296,16 +329,17 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
 
             icon, label = STEP_LABELS.get(node_name, ("⚙️", node_name))
 
-            # After intent_classifier fires, show which mode was detected
             extra = ""
             if node_name == "intent_classifier":
                 detected_mode = partial_state.get("analysis_mode", "strategic")
                 mode_info = MODE_META.get(detected_mode, {})
                 is_auto = partial_state.get("mode_confidence") == "auto"
-                badge = " <span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;" \
-                        "letter-spacing:0.05em;text-transform:uppercase;border-radius:8px;padding:2px 8px'>" \
-                        "AUTO-DETECTED</span>" if is_auto else ""
-                extra = (f" → {mode_info.get('icon','')} <b>{mode_info.get('label','')}</b>{badge}")
+                badge = (
+                    " <span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;"
+                    "letter-spacing:0.05em;text-transform:uppercase;border-radius:8px;padding:2px 8px'>"
+                    "AUTO-DETECTED</span>"
+                ) if is_auto else ""
+                extra = f" → {mode_info.get('icon','')} <b>{mode_info.get('label','')}</b>{badge}"
 
             status_text.markdown(
                 f"<p style='color:#64748b;font-size:13px;font-weight:500'>"
@@ -314,7 +348,6 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
                 unsafe_allow_html=True
             )
 
-            # Live preview during synthesis
             syntheses = partial_state.get("syntheses", [])
             if syntheses and node_name == "synthesizer":
                 preview_lines = []
@@ -384,7 +417,6 @@ def _render_results(result: dict):
     research_query = result.get("research_query", "")
     syntheses = result.get("syntheses", [])
 
-    # Mode badge
     auto_badge = (
         "<span class='mode-auto-badge'>AUTO-DETECTED</span>"
         if mode_confidence == "auto" else
@@ -397,7 +429,6 @@ def _render_results(result: dict):
         unsafe_allow_html=True
     )
 
-    # Research question
     if research_query:
         st.markdown(
             f"<div class='research-banner'>"
@@ -407,7 +438,6 @@ def _render_results(result: dict):
             unsafe_allow_html=True
         )
 
-    # Route to mode-specific renderer
     renderer = {
         "feature_deep_dive": _render_feature_deep_dive,
         "landscape_scan":    _render_landscape_scan,
@@ -417,16 +447,13 @@ def _render_results(result: dict):
 
     renderer(result)
 
-    # ── Timing ────────────────────────────────────────────────────────────────
     _render_timing(result)
 
-    # ── Errors ────────────────────────────────────────────────────────────────
     if result.get("errors"):
         with st.expander("⚠️ Run Warnings", expanded=False):
             for err in result["errors"]:
                 st.caption(err)
 
-    # ── Delta ─────────────────────────────────────────────────────────────────
     diffs = result.get("diffs", [])
     if diffs:
         st.markdown("<div class='section-header'>Delta — What's New Since Last Run</div>",
@@ -446,7 +473,6 @@ def _render_results(result: dict):
 def _render_feature_deep_dive(result: dict):
     syntheses = result.get("syntheses", [])
 
-    # Direct answers — most prominent
     st.markdown("<div class='section-header'>Direct Answer</div>", unsafe_allow_html=True)
     for s in syntheses:
         direct = s.get("direct_answer", "").strip()
@@ -459,7 +485,6 @@ def _render_feature_deep_dive(result: dict):
                 unsafe_allow_html=True
             )
 
-    # Deep dive sections as expandable blocks (not tabs — this is one feature, not a company)
     st.markdown("<div class='section-header'>Feature Analysis</div>", unsafe_allow_html=True)
     for s in syntheses:
         with st.expander(f"  {s['vendor_name']} — Full Feature Breakdown", expanded=True):
@@ -510,10 +535,10 @@ def _render_landscape_scan(result: dict):
 def _render_strategic(result: dict):
     syntheses = result.get("syntheses", [])
 
-    # Direct answers first
+    # Direct answers — always shown first and prominently
     has_direct = any(s.get("direct_answer") for s in syntheses)
     if has_direct:
-        st.markdown("<div class='section-header'>Direct Answers to Your Research Question</div>",
+        st.markdown("<div class='section-header'>Direct Answer to Your Research Question</div>",
                     unsafe_allow_html=True)
         for s in syntheses:
             direct = s.get("direct_answer", "").strip()
@@ -526,23 +551,38 @@ def _render_strategic(result: dict):
                     unsafe_allow_html=True
                 )
 
-    # Full 8-tab breakdown
-    st.markdown("<div class='section-header'>Full Supporting Intelligence</div>",
+    # Supporting details — only show tabs that have relevant content
+    st.markdown("<div class='section-header'>Supporting Intelligence</div>",
                 unsafe_allow_html=True)
+
     for s in syntheses:
-        with st.expander(f"  {s['vendor_name']} — detailed breakdown", expanded=False):
-            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-                "🚀 Launches", "🎯 Use Cases", "⚙️ Technical", "🖥️ UI/UX",
-                "💰 Pricing", "🧭 Direction", "⚔️ Gaps", "👁️ Watch",
-            ])
-            with tab1: st.markdown(s.get("recent_launches", "_No data_"))
-            with tab2: st.markdown(s.get("use_cases", "_No data_"))
-            with tab3: st.markdown(s.get("technical_details", "_No data_"))
-            with tab4: st.markdown(s.get("ui_ux", "_No data_"))
-            with tab5: st.markdown(s.get("pricing_signals", "_No data_"))
-            with tab6: st.markdown(s.get("strategic_direction", "_No data_"))
-            with tab7: st.markdown(s.get("gap_vs_your_product", "_No data_"))
-            with tab8: st.markdown(s.get("watch_points", "_No data_"))
+        # Filter to only sections with real content
+        relevant = [
+            (key, label)
+            for key, label in STRATEGIC_SECTION_DEFS
+            if _is_content_relevant(s.get(key, ""))
+        ]
+
+        if not relevant:
+            st.info(f"No additional supporting data found for {s['vendor_name']}.")
+            continue
+
+        with st.expander(
+            f"  {s['vendor_name']} — {len(relevant)} relevant section(s)",
+            expanded=True
+        ):
+            if len(relevant) == 1:
+                # Single section — no tab chrome needed
+                key, label = relevant[0]
+                st.markdown(f"#### {label}")
+                st.markdown(s.get(key, "_No data_"))
+            else:
+                # Only render the tabs that have content
+                tab_labels = [label for _, label in relevant]
+                tabs = st.tabs(tab_labels)
+                for tab, (key, _) in zip(tabs, relevant):
+                    with tab:
+                        st.markdown(s.get(key, "_No data_"))
 
 
 def _render_battle_card(result: dict):
@@ -551,7 +591,6 @@ def _render_battle_card(result: dict):
     for s in syntheses:
         st.markdown(f"### ⚔️ {s['vendor_name']}")
 
-        # One-liner answer
         direct = s.get("direct_answer", "").strip()
         if direct:
             st.markdown(
@@ -562,7 +601,6 @@ def _render_battle_card(result: dict):
                 unsafe_allow_html=True
             )
 
-        # Strengths vs Weaknesses side by side
         col1, col2 = st.columns(2)
         with col1:
             st.markdown(
@@ -582,19 +620,15 @@ def _render_battle_card(result: dict):
             st.markdown(s.get("gap_vs_your_product", "_No data_"))
             st.markdown("</div>", unsafe_allow_html=True)
 
-        # Where we win
         st.markdown("**🏆 Where We Win**")
         st.markdown(s.get("strategic_direction", "_No data_"))
 
-        # Objections
         with st.expander("💬 Common Objections & Responses", expanded=False):
             st.markdown(s.get("use_cases", "_No data_"))
 
-        # Pricing
         with st.expander("💰 Pricing Summary", expanded=False):
             st.markdown(s.get("pricing_signals", "_No data_"))
 
-        # Positioning statement — most prominent
         positioning = s.get("watch_points", "").strip()
         if positioning:
             st.markdown(
