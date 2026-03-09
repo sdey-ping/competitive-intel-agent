@@ -2,11 +2,12 @@ import time
 import streamlit as st
 from db.database import get_all_competitors
 from mailer.emailer import send_report_email
-
+from agent.nodes.intent_classifier import MODE_META
 
 CUSTOM_CSS = """
 <style>
-/* Timing metric cards */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+
 .timing-card {
     background: #ffffff;
     border: 1px solid #e8e4dd;
@@ -16,114 +17,114 @@ CUSTOM_CSS = """
     box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .timing-label {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    margin-bottom: 6px;
+    font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #94a3b8; margin-bottom: 6px;
 }
 .timing-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 30px;
-    font-weight: 500;
-    color: #1a56db;
-    line-height: 1;
+    font-family: 'JetBrains Mono', monospace; font-size: 30px;
+    font-weight: 500; color: #1a56db; line-height: 1;
 }
-.timing-sub {
-    font-size: 11px;
-    color: #94a3b8;
-    margin-top: 5px;
-}
+.timing-sub { font-size: 11px; color: #94a3b8; margin-top: 5px; }
 
-/* Section headers */
 .section-header {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #94a3b8;
-    margin: 28px 0 14px 0;
-    padding-bottom: 10px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #94a3b8;
+    margin: 28px 0 14px 0; padding-bottom: 10px;
     border-bottom: 1px solid #e8e4dd;
 }
 
-/* Direct answer card — most prominent element */
-.direct-answer-card {
-    background: #eff6ff;
-    border: 1.5px solid #bfdbfe;
-    border-left: 4px solid #1a56db;
-    border-radius: 12px;
-    padding: 20px 24px;
-    margin: 8px 0 16px 0;
+/* Mode selector pills */
+.mode-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px 0; }
+.mode-pill {
+    display: inline-flex; align-items: center; gap: 6px;
+    border: 1.5px solid #e2ddd6; border-radius: 20px;
+    padding: 7px 16px; font-size: 13px; font-weight: 500;
+    color: #64748b; background: #ffffff; cursor: pointer;
+    transition: all 0.15s;
 }
-.direct-answer-vendor {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: #1a56db;
-    margin-bottom: 8px;
+.mode-pill:hover { border-color: #1a56db; color: #1a56db; }
+.mode-pill.active {
+    background: #eff6ff; border-color: #1a56db;
+    color: #1a56db; font-weight: 600;
 }
-.direct-answer-text {
-    font-size: 14px;
-    color: #1e3a5f;
-    line-height: 1.7;
+.mode-pill .mode-icon { font-size: 15px; }
+
+/* Mode banner shown in results */
+.mode-banner {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #f0f7ff; border: 1px solid #bfdbfe;
+    border-radius: 8px; padding: 8px 16px; margin-bottom: 16px;
+    font-size: 13px; font-weight: 600; color: #1a56db;
+}
+.mode-auto-badge {
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase; background: #e0f2fe;
+    color: #0369a1; border-radius: 10px; padding: 2px 8px;
 }
 
 /* Research question banner */
 .research-banner {
-    background: #f8faff;
-    border: 1px solid #e0e9ff;
-    border-radius: 10px;
-    padding: 14px 18px;
-    margin-bottom: 20px;
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
+    background: #f8faff; border: 1px solid #e0e9ff;
+    border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
 }
 .research-label {
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #1a56db;
-    margin-bottom: 4px;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+    text-transform: uppercase; color: #1a56db; margin-bottom: 4px;
 }
-.research-text {
-    font-size: 13.5px;
-    color: #1e293b;
-    font-weight: 500;
-    line-height: 1.5;
+.research-text { font-size: 13.5px; color: #1e293b; font-weight: 500; line-height: 1.5; }
+
+/* Direct answer card */
+.direct-answer-card {
+    background: #eff6ff; border: 1.5px solid #bfdbfe;
+    border-left: 4px solid #1a56db; border-radius: 12px;
+    padding: 20px 24px; margin: 8px 0 16px 0;
+}
+.direct-answer-vendor {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; color: #1a56db; margin-bottom: 8px;
+}
+.direct-answer-text { font-size: 14px; color: #1e3a5f; line-height: 1.7; }
+
+/* Battle card layout */
+.battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+.battle-cell {
+    background: #ffffff; border: 1px solid #e8e4dd;
+    border-radius: 10px; padding: 16px 18px;
+}
+.battle-cell.green { border-left: 3px solid #16a34a; }
+.battle-cell.red   { border-left: 3px solid #dc2626; }
+.battle-cell.blue  { border-left: 3px solid #1a56db; }
+.battle-cell-label {
+    font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
+    text-transform: uppercase; margin-bottom: 10px;
 }
 
-/* Save indicator pills */
+/* Positioning statement */
+.positioning-statement {
+    background: #0f172a; color: #f8fafc;
+    border-radius: 12px; padding: 20px 24px;
+    font-size: 16px; font-weight: 600; line-height: 1.5;
+    margin: 16px 0; font-style: italic;
+}
+
+/* Save pills */
 .save-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #f0fdf4;
-    border: 1px solid #86efac;
-    color: #15803d;
-    border-radius: 20px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #f0fdf4; border: 1px solid #86efac;
+    color: #15803d; border-radius: 20px;
+    padding: 5px 14px; font-size: 12px; font-weight: 600;
 }
 .nosave-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #fffbeb;
-    border: 1px solid #fcd34d;
-    color: #b45309;
-    border-radius: 20px;
-    padding: 5px 14px;
-    font-size: 12px;
-    font-weight: 600;
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #fffbeb; border: 1px solid #fcd34d;
+    color: #b45309; border-radius: 20px;
+    padding: 5px 14px; font-size: 12px; font-weight: 600;
 }
 </style>
 """
+
+# Ordered list for rendering mode pills in UI
+MODE_ORDER = ["feature_deep_dive", "landscape_scan", "strategic", "battle_card"]
 
 
 def render():
@@ -141,64 +142,115 @@ def render():
         st.warning("No competitors configured yet. Go to **Configure Competitors** to add some.")
         return
 
-    st.markdown("<div class='section-header'>Research Configuration</div>", unsafe_allow_html=True)
+    # ── Research Query ─────────────────────────────────────────────────────────
+    st.markdown("<div class='section-header'>Research Question</div>", unsafe_allow_html=True)
 
     research_query = st.text_area(
         "Research Focus",
-        placeholder="e.g. How do Anthropic and OpenAI approach AI safety differently?",
-        height=90,
-        help="This is the primary question the entire report will answer. Be specific.",
+        placeholder=(
+            "Ask anything — e.g.\n"
+            "• 'What is the Export User Created Columns feature and how does Okta Workflows fit in?'\n"
+            "• 'What did Okta ship in the last 90 days?'\n"
+            "• 'How does Okta approach enterprise identity vs our product?'\n"
+            "• 'Where are we ahead and behind Okta — give me a battle card.'"
+        ),
+        height=110,
         label_visibility="collapsed",
     )
 
-    vendor_names = [c["vendor_name"] for c in competitors]
-    selected_vendors = st.multiselect(
-        "Vendors to Evaluate",
-        options=vendor_names,
-        default=vendor_names,
+    # ── Analysis Mode Selector ─────────────────────────────────────────────────
+    st.markdown("<div class='section-header'>Analysis Mode</div>", unsafe_allow_html=True)
+
+    st.markdown(
+        "<p style='font-size:13px;color:#64748b;margin:-8px 0 12px 0'>"
+        "Auto-detect reads your question and picks the right mode. "
+        "Or select manually to override.</p>",
+        unsafe_allow_html=True
     )
 
-    st.markdown("<div class='section-header'>Report Persistence</div>", unsafe_allow_html=True)
+    # Use session state to track selected mode
+    if "selected_mode" not in st.session_state:
+        st.session_state["selected_mode"] = "auto"
 
+    # Render mode pills as columns
+    cols = st.columns(5)
+
+    modes_with_auto = [("auto", "🤖", "Auto-Detect", "Let AI pick the best mode")] + [
+        (mode_id, MODE_META[mode_id]["icon"], MODE_META[mode_id]["label"], MODE_META[mode_id]["description"])
+        for mode_id in MODE_ORDER
+    ]
+
+    for i, (mode_id, icon, label, desc) in enumerate(modes_with_auto):
+        with cols[i]:
+            is_active = st.session_state["selected_mode"] == mode_id
+            border = "2px solid #1a56db" if is_active else "1.5px solid #e2ddd6"
+            bg = "#eff6ff" if is_active else "#ffffff"
+            text_color = "#1a56db" if is_active else "#475569"
+            weight = "700" if is_active else "500"
+
+            st.markdown(
+                f"<div style='background:{bg};border:{border};border-radius:12px;"
+                f"padding:12px 14px;text-align:center;margin-bottom:4px'>"
+                f"<div style='font-size:20px;margin-bottom:4px'>{icon}</div>"
+                f"<div style='font-size:12px;font-weight:{weight};color:{text_color}'>{label}</div>"
+                f"<div style='font-size:10px;color:#94a3b8;margin-top:3px;line-height:1.3'>{desc}</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+            if st.button("Select", key=f"mode_btn_{mode_id}",
+                         type="primary" if is_active else "secondary",
+                         use_container_width=True):
+                st.session_state["selected_mode"] = mode_id
+                st.rerun()
+
+    # ── Vendors ────────────────────────────────────────────────────────────────
+    st.markdown("<div class='section-header'>Vendors to Evaluate</div>", unsafe_allow_html=True)
+    vendor_names = [c["vendor_name"] for c in competitors]
+    selected_vendors = st.multiselect(
+        "Vendors", options=vendor_names, default=vendor_names, label_visibility="collapsed"
+    )
+
+    # ── Report Persistence ─────────────────────────────────────────────────────
+    st.markdown("<div class='section-header'>Report Persistence</div>", unsafe_allow_html=True)
     col_drive, col_info = st.columns([2, 3])
     with col_drive:
         save_to_drive = st.checkbox(
-            "📤  Publish & Archive Report",
-            value=False,
-            help="When enabled: saves to Report History, uploads to Google Drive."
+            "📤  Publish & Archive Report", value=False,
+            help="Saves to Report History and uploads to Google Drive."
         )
     with col_info:
         if save_to_drive:
-            st.markdown(
-                "<div class='save-pill'>✦ Report will be archived to History & Google Drive</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("<div class='save-pill'>✦ Will be archived to History & Google Drive</div>",
+                        unsafe_allow_html=True)
         else:
-            st.markdown(
-                "<div class='nosave-pill'>⚡ Live analysis only — not saved to History or Drive</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("<div class='nosave-pill'>⚡ Live analysis only — not saved</div>",
+                        unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
 
+    # ── Run ────────────────────────────────────────────────────────────────────
     run_button = st.button(
         "⚡  Run Intelligence Evaluation",
-        type="primary",
-        disabled=not selected_vendors,
-        use_container_width=True,
+        type="primary", disabled=not selected_vendors, use_container_width=True,
     )
 
     if run_button:
         if not research_query.strip():
-            st.warning("Please enter a research focus before running.")
+            st.warning("Please enter a research question before running.")
             return
-        _run_with_progress(selected_vendors, research_query, save_to_drive)
+
+        selected_mode = st.session_state.get("selected_mode", "auto")
+        user_mode = "" if selected_mode == "auto" else selected_mode
+
+        _run_with_progress(selected_vendors, research_query, save_to_drive, user_mode)
 
     if "agent_result" in st.session_state:
         _render_results(st.session_state["agent_result"])
 
 
-def _run_with_progress(selected_vendors, research_query, save_to_drive):
+# ── Pipeline runner ────────────────────────────────────────────────────────────
+
+def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mode=""):
     from agent.graph import stream_agent, PIPELINE_STEPS, STEP_LABELS
 
     total_steps = len(PIPELINE_STEPS)
@@ -224,7 +276,9 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
         completed = 0
 
         for node_name, partial_state in stream_agent(
-            selected_vendors, research_query, save_to_drive=save_to_drive
+            selected_vendors, research_query,
+            save_to_drive=save_to_drive,
+            analysis_mode=user_mode,
         ):
             if node_name == "__end__":
                 result = partial_state
@@ -241,28 +295,39 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
             )
 
             icon, label = STEP_LABELS.get(node_name, ("⚙️", node_name))
+
+            # After intent_classifier fires, show which mode was detected
+            extra = ""
+            if node_name == "intent_classifier":
+                detected_mode = partial_state.get("analysis_mode", "strategic")
+                mode_info = MODE_META.get(detected_mode, {})
+                is_auto = partial_state.get("mode_confidence") == "auto"
+                badge = " <span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;" \
+                        "letter-spacing:0.05em;text-transform:uppercase;border-radius:8px;padding:2px 8px'>" \
+                        "AUTO-DETECTED</span>" if is_auto else ""
+                extra = (f" → {mode_info.get('icon','')} <b>{mode_info.get('label','')}</b>{badge}")
+
             status_text.markdown(
                 f"<p style='color:#64748b;font-size:13px;font-weight:500'>"
-                f"<span style='color:#15803d'>✓</span>&nbsp; <b>{icon} {label}</b> — done</p>",
+                f"<span style='color:#15803d'>✓</span>&nbsp; <b>{icon} {label}</b>"
+                f" — done{extra}</p>",
                 unsafe_allow_html=True
             )
 
-            # Live preview: show direct_answer as it arrives (more relevant than launches)
+            # Live preview during synthesis
             syntheses = partial_state.get("syntheses", [])
             if syntheses and node_name == "synthesizer":
                 preview_lines = []
                 for s in syntheses:
                     vendor = s.get("vendor_name", "")
-                    # Prefer direct_answer for live preview — it's the most relevant content
-                    direct = (s.get("direct_answer") or s.get("recent_launches") or "")[:300]
-                    if direct:
+                    preview_text = (s.get("direct_answer") or s.get("recent_launches") or "")[:280]
+                    if preview_text:
                         preview_lines.append(
                             f"<div style='margin-bottom:12px'>"
                             f"<span style='font-size:11px;font-weight:700;letter-spacing:0.06em;"
                             f"text-transform:uppercase;color:#1a56db'>{vendor}</span>"
                             f"<p style='font-size:13px;color:#475569;margin:4px 0 0 0;"
-                            f"line-height:1.6'>{direct}…</p>"
-                            f"</div>"
+                            f"line-height:1.6'>{preview_text}…</p></div>"
                         )
                 if preview_lines:
                     live_preview.markdown(
@@ -270,13 +335,11 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
                         "padding:16px 20px;margin-top:8px'>"
                         "<p style='font-size:11px;font-weight:700;letter-spacing:0.07em;"
                         "text-transform:uppercase;color:#94a3b8;margin:0 0 12px 0'>"
-                        "⚡ Live Preview — Synthesis in progress</p>"
-                        + "".join(preview_lines) + "</div>",
+                        "⚡ Live Preview</p>" + "".join(preview_lines) + "</div>",
                         unsafe_allow_html=True
                     )
 
         analysis_duration = round(time.time() - analysis_start, 1)
-
         progress_bar.progress(1.0)
         pct_text.markdown(
             "<p style='font-family:JetBrains Mono,monospace;font-size:13px;"
@@ -285,7 +348,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
         )
         status_text.markdown(
             "<p style='color:#15803d;font-size:13px;font-weight:700'>"
-            "✓&nbsp; Intelligence evaluation complete</p>",
+            "✓&nbsp; Evaluation complete</p>",
             unsafe_allow_html=True
         )
         time.sleep(0.8)
@@ -310,99 +373,64 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive):
         st.error(f"Evaluation failed: {str(e)}")
 
 
+# ── Results rendering — routes per mode ───────────────────────────────────────
+
 def _render_results(result: dict):
     st.divider()
 
+    analysis_mode = result.get("analysis_mode", "strategic")
+    mode_info = MODE_META.get(analysis_mode, {})
+    mode_confidence = result.get("mode_confidence", "auto")
     research_query = result.get("research_query", "")
+    syntheses = result.get("syntheses", [])
 
-    # ── Research question reminder — keeps context visible ────────────────────
+    # Mode badge
+    auto_badge = (
+        "<span class='mode-auto-badge'>AUTO-DETECTED</span>"
+        if mode_confidence == "auto" else
+        "<span class='mode-auto-badge' style='background:#fef9c3;color:#854d0e'>MANUAL</span>"
+    )
+    st.markdown(
+        f"<div class='mode-banner'>"
+        f"{mode_info.get('icon','')} {mode_info.get('label','Analysis')} {auto_badge}"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+
+    # Research question
     if research_query:
         st.markdown(
             f"<div class='research-banner'>"
-            f"<div>"
             f"<div class='research-label'>🔍 Research Question</div>"
             f"<div class='research-text'>{research_query}</div>"
-            f"</div></div>",
+            f"</div>",
             unsafe_allow_html=True
         )
 
-    # ── Direct Answers — most prominent, shown first ───────────────────────────
-    syntheses = result.get("syntheses", [])
-    has_direct_answers = any(s.get("direct_answer") for s in syntheses)
+    # Route to mode-specific renderer
+    renderer = {
+        "feature_deep_dive": _render_feature_deep_dive,
+        "landscape_scan":    _render_landscape_scan,
+        "strategic":         _render_strategic,
+        "battle_card":       _render_battle_card,
+    }.get(analysis_mode, _render_strategic)
 
-    if has_direct_answers:
-        st.markdown("<div class='section-header'>Direct Answers to Your Research Question</div>", unsafe_allow_html=True)
-        for synthesis in syntheses:
-            direct = synthesis.get("direct_answer", "").strip()
-            if direct:
-                st.markdown(
-                    f"<div class='direct-answer-card'>"
-                    f"<div class='direct-answer-vendor'>{synthesis['vendor_name']}</div>"
-                    f"<div class='direct-answer-text'>{direct}</div>"
-                    f"</div>",
-                    unsafe_allow_html=True
-                )
+    renderer(result)
 
-    # ── Timing Display ─────────────────────────────────────────────────────────
-    analysis_secs = result.get("analysis_duration_seconds", 0)
-    drive_secs = result.get("drive_duration_seconds", 0)
-    save_to_drive = result.get("save_to_drive", False)
+    # ── Timing ────────────────────────────────────────────────────────────────
+    _render_timing(result)
 
-    st.markdown("<div class='section-header'>Evaluation Performance</div>", unsafe_allow_html=True)
-
-    if save_to_drive and drive_secs > 0:
-        c1, c2, c3 = st.columns(3)
-        total = round(analysis_secs + drive_secs, 1)
-        with c1:
-            st.markdown(f"""
-                <div class='timing-card'>
-                    <div class='timing-label'>AI Analysis</div>
-                    <div class='timing-value'>{analysis_secs}s</div>
-                    <div class='timing-sub'>Scraping → Synthesis → Diff</div>
-                </div>""", unsafe_allow_html=True)
-        with c2:
-            st.markdown(f"""
-                <div class='timing-card'>
-                    <div class='timing-label'>Drive Archive</div>
-                    <div class='timing-value'>{drive_secs}s</div>
-                    <div class='timing-sub'>Upload + Report History save</div>
-                </div>""", unsafe_allow_html=True)
-        with c3:
-            st.markdown(f"""
-                <div class='timing-card'>
-                    <div class='timing-label'>Total Duration</div>
-                    <div class='timing-value'>{total}s</div>
-                    <div class='timing-sub'>{len(syntheses)} vendor(s) analyzed</div>
-                </div>""", unsafe_allow_html=True)
-    else:
-        c1, c2 = st.columns(2)
-        with c1:
-            st.markdown(f"""
-                <div class='timing-card'>
-                    <div class='timing-label'>AI Analysis Duration</div>
-                    <div class='timing-value'>{analysis_secs}s</div>
-                    <div class='timing-sub'>Scraping → Synthesis → Diff</div>
-                </div>""", unsafe_allow_html=True)
-        with c2:
-            vendor_count = len(syntheses)
-            per_vendor = round(analysis_secs / vendor_count, 1) if vendor_count else 0
-            st.markdown(f"""
-                <div class='timing-card'>
-                    <div class='timing-label'>Avg. Per Vendor</div>
-                    <div class='timing-value'>{per_vendor}s</div>
-                    <div class='timing-sub'>{vendor_count} vendor(s) analyzed</div>
-                </div>""", unsafe_allow_html=True)
-
-    # ── Warnings ────────────────────────────────────────────────────────────
+    # ── Errors ────────────────────────────────────────────────────────────────
     if result.get("errors"):
         with st.expander("⚠️ Run Warnings", expanded=False):
             for err in result["errors"]:
                 st.caption(err)
 
-    # ── What's New (Delta) ──────────────────────────────────────────────────
+    # ── Delta ─────────────────────────────────────────────────────────────────
     diffs = result.get("diffs", [])
     if diffs:
-        st.markdown("<div class='section-header'>Delta — What's New Since Last Run</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-header'>Delta — What's New Since Last Run</div>",
+                    unsafe_allow_html=True)
         for diff in diffs:
             with st.expander(f"  {diff['vendor_name']}", expanded=True):
                 if diff.get("is_first_run"):
@@ -410,53 +438,232 @@ def _render_results(result: dict):
                 else:
                     st.markdown(diff["delta_summary"])
 
-    # ── Per-Vendor Deep Analysis ─────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Full Supporting Intelligence</div>", unsafe_allow_html=True)
-    for synthesis in syntheses:
-        with st.expander(f"  {synthesis['vendor_name']} — detailed breakdown", expanded=False):
-            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
-                "🚀 Launches",
-                "🎯 Use Cases",
-                "⚙️ Technical",
-                "🖥️ UI/UX",
-                "💰 Pricing",
-                "🧭 Direction",
-                "⚔️ Gaps",
-                "👁️ Watch",
-            ])
-            with tab1:
-                st.markdown(synthesis.get("recent_launches", "_No data retrieved_"))
-            with tab2:
-                st.markdown(synthesis.get("use_cases", "_No data retrieved_"))
-            with tab3:
-                st.markdown(synthesis.get("technical_details", "_No data retrieved_"))
-            with tab4:
-                st.markdown(synthesis.get("ui_ux", "_No data retrieved_"))
-            with tab5:
-                st.markdown(synthesis.get("pricing_signals", "_No data retrieved_"))
-            with tab6:
-                st.markdown(synthesis.get("strategic_direction", "_No data retrieved_"))
-            with tab7:
-                st.markdown(synthesis.get("gap_vs_your_product", "_No data retrieved_"))
-            with tab8:
-                st.markdown(synthesis.get("watch_points", "_No data retrieved_"))
+    _render_action_bar(result)
 
-    # ── Action Bar ──────────────────────────────────────────────────────────
+
+# ── Per-mode renderers ─────────────────────────────────────────────────────────
+
+def _render_feature_deep_dive(result: dict):
+    syntheses = result.get("syntheses", [])
+
+    # Direct answers — most prominent
+    st.markdown("<div class='section-header'>Direct Answer</div>", unsafe_allow_html=True)
+    for s in syntheses:
+        direct = s.get("direct_answer", "").strip()
+        if direct:
+            st.markdown(
+                f"<div class='direct-answer-card'>"
+                f"<div class='direct-answer-vendor'>{s['vendor_name']}</div>"
+                f"<div class='direct-answer-text'>{direct}</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+    # Deep dive sections as expandable blocks (not tabs — this is one feature, not a company)
+    st.markdown("<div class='section-header'>Feature Analysis</div>", unsafe_allow_html=True)
+    for s in syntheses:
+        with st.expander(f"  {s['vendor_name']} — Full Feature Breakdown", expanded=True):
+            st.markdown("#### What This Feature Does")
+            st.markdown(s.get("recent_launches", "_No data retrieved_"))
+
+            st.markdown("#### Who It's Built For")
+            st.markdown(s.get("use_cases", "_No data retrieved_"))
+
+            st.markdown("#### How It Fits Into Their Product Strategy")
+            st.markdown(s.get("strategic_direction", "_No data retrieved_"))
+
+            st.markdown("#### How It Compares to Our Product")
+            st.markdown(s.get("gap_vs_your_product", "_No data retrieved_"))
+
+            st.markdown("#### Watch Points")
+            st.markdown(s.get("watch_points", "_No data retrieved_"))
+
+
+def _render_landscape_scan(result: dict):
+    syntheses = result.get("syntheses", [])
+
+    st.markdown("<div class='section-header'>Summary</div>", unsafe_allow_html=True)
+    for s in syntheses:
+        direct = s.get("direct_answer", "").strip()
+        if direct:
+            st.markdown(
+                f"<div class='direct-answer-card'>"
+                f"<div class='direct-answer-vendor'>{s['vendor_name']}</div>"
+                f"<div class='direct-answer-text'>{direct}</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+    st.markdown("<div class='section-header'>Recent Launches</div>", unsafe_allow_html=True)
+    for s in syntheses:
+        with st.expander(f"  {s['vendor_name']}", expanded=True):
+            st.markdown(s.get("recent_launches", "_No data retrieved_"))
+
+    st.markdown("<div class='section-header'>Signals & Themes</div>", unsafe_allow_html=True)
+    for s in syntheses:
+        with st.expander(f"  {s['vendor_name']}", expanded=False):
+            st.markdown(s.get("strategic_direction", "_No data retrieved_"))
+            st.markdown("**Gaps in Their Activity**")
+            st.markdown(s.get("gap_vs_your_product", "_No data retrieved_"))
+
+
+def _render_strategic(result: dict):
+    syntheses = result.get("syntheses", [])
+
+    # Direct answers first
+    has_direct = any(s.get("direct_answer") for s in syntheses)
+    if has_direct:
+        st.markdown("<div class='section-header'>Direct Answers to Your Research Question</div>",
+                    unsafe_allow_html=True)
+        for s in syntheses:
+            direct = s.get("direct_answer", "").strip()
+            if direct:
+                st.markdown(
+                    f"<div class='direct-answer-card'>"
+                    f"<div class='direct-answer-vendor'>{s['vendor_name']}</div>"
+                    f"<div class='direct-answer-text'>{direct}</div>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+
+    # Full 8-tab breakdown
+    st.markdown("<div class='section-header'>Full Supporting Intelligence</div>",
+                unsafe_allow_html=True)
+    for s in syntheses:
+        with st.expander(f"  {s['vendor_name']} — detailed breakdown", expanded=False):
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
+                "🚀 Launches", "🎯 Use Cases", "⚙️ Technical", "🖥️ UI/UX",
+                "💰 Pricing", "🧭 Direction", "⚔️ Gaps", "👁️ Watch",
+            ])
+            with tab1: st.markdown(s.get("recent_launches", "_No data_"))
+            with tab2: st.markdown(s.get("use_cases", "_No data_"))
+            with tab3: st.markdown(s.get("technical_details", "_No data_"))
+            with tab4: st.markdown(s.get("ui_ux", "_No data_"))
+            with tab5: st.markdown(s.get("pricing_signals", "_No data_"))
+            with tab6: st.markdown(s.get("strategic_direction", "_No data_"))
+            with tab7: st.markdown(s.get("gap_vs_your_product", "_No data_"))
+            with tab8: st.markdown(s.get("watch_points", "_No data_"))
+
+
+def _render_battle_card(result: dict):
+    syntheses = result.get("syntheses", [])
+
+    for s in syntheses:
+        st.markdown(f"### ⚔️ {s['vendor_name']}")
+
+        # One-liner answer
+        direct = s.get("direct_answer", "").strip()
+        if direct:
+            st.markdown(
+                f"<div class='direct-answer-card'>"
+                f"<div class='direct-answer-vendor'>BOTTOM LINE</div>"
+                f"<div class='direct-answer-text'>{direct}</div>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+
+        # Strengths vs Weaknesses side by side
+        col1, col2 = st.columns(2)
+        with col1:
+            st.markdown(
+                "<div class='battle-cell green'>"
+                "<div class='battle-cell-label' style='color:#16a34a'>✅ Their Strengths</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown(s.get("recent_launches", "_No data_"))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col2:
+            st.markdown(
+                "<div class='battle-cell red'>"
+                "<div class='battle-cell-label' style='color:#dc2626'>❌ Their Weaknesses</div>",
+                unsafe_allow_html=True
+            )
+            st.markdown(s.get("gap_vs_your_product", "_No data_"))
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        # Where we win
+        st.markdown("**🏆 Where We Win**")
+        st.markdown(s.get("strategic_direction", "_No data_"))
+
+        # Objections
+        with st.expander("💬 Common Objections & Responses", expanded=False):
+            st.markdown(s.get("use_cases", "_No data_"))
+
+        # Pricing
+        with st.expander("💰 Pricing Summary", expanded=False):
+            st.markdown(s.get("pricing_signals", "_No data_"))
+
+        # Positioning statement — most prominent
+        positioning = s.get("watch_points", "").strip()
+        if positioning:
+            st.markdown(
+                f"<div class='positioning-statement'>"{positioning}"</div>",
+                unsafe_allow_html=True
+            )
+
+        st.divider()
+
+
+# ── Shared helpers ─────────────────────────────────────────────────────────────
+
+def _render_timing(result: dict):
+    analysis_secs = result.get("analysis_duration_seconds", 0)
+    drive_secs = result.get("drive_duration_seconds", 0)
+    save_to_drive = result.get("save_to_drive", False)
+    syntheses = result.get("syntheses", [])
+
+    st.markdown("<div class='section-header'>Evaluation Performance</div>",
+                unsafe_allow_html=True)
+
+    if save_to_drive and drive_secs > 0:
+        c1, c2, c3 = st.columns(3)
+        total = round(analysis_secs + drive_secs, 1)
+        with c1:
+            st.markdown(f"<div class='timing-card'><div class='timing-label'>AI Analysis</div>"
+                        f"<div class='timing-value'>{analysis_secs}s</div>"
+                        f"<div class='timing-sub'>Scraping → Synthesis → Diff</div></div>",
+                        unsafe_allow_html=True)
+        with c2:
+            st.markdown(f"<div class='timing-card'><div class='timing-label'>Drive Archive</div>"
+                        f"<div class='timing-value'>{drive_secs}s</div>"
+                        f"<div class='timing-sub'>Upload + History save</div></div>",
+                        unsafe_allow_html=True)
+        with c3:
+            st.markdown(f"<div class='timing-card'><div class='timing-label'>Total Duration</div>"
+                        f"<div class='timing-value'>{total}s</div>"
+                        f"<div class='timing-sub'>{len(syntheses)} vendor(s)</div></div>",
+                        unsafe_allow_html=True)
+    else:
+        c1, c2 = st.columns(2)
+        with c1:
+            st.markdown(f"<div class='timing-card'><div class='timing-label'>AI Analysis Duration</div>"
+                        f"<div class='timing-value'>{analysis_secs}s</div>"
+                        f"<div class='timing-sub'>Scraping → Synthesis → Diff</div></div>",
+                        unsafe_allow_html=True)
+        with c2:
+            vendor_count = len(syntheses)
+            per_vendor = round(analysis_secs / vendor_count, 1) if vendor_count else 0
+            st.markdown(f"<div class='timing-card'><div class='timing-label'>Avg. Per Vendor</div>"
+                        f"<div class='timing-value'>{per_vendor}s</div>"
+                        f"<div class='timing-sub'>{vendor_count} vendor(s)</div></div>",
+                        unsafe_allow_html=True)
+
+
+def _render_action_bar(result: dict):
     st.divider()
-    col1, col2, col3 = st.columns([2, 2, 1])
+    col1, col2, _ = st.columns([2, 2, 1])
 
     with col1:
         gdrive_link = result.get("gdrive_link", "")
+        save_to_drive = result.get("save_to_drive", False)
         if gdrive_link and not gdrive_link.startswith("[") and gdrive_link != "__local_only__":
-            st.link_button("📁  Open in Google Drive", gdrive_link, type="secondary", use_container_width=True)
-        else:
-            if not save_to_drive:
-                st.button(
-                    "📁  Google Drive",
-                    disabled=True,
-                    help="Enable 'Publish & Archive Report' to upload to Drive",
-                    use_container_width=True
-                )
+            st.link_button("📁  Open in Google Drive", gdrive_link,
+                           type="secondary", use_container_width=True)
+        elif not save_to_drive:
+            st.button("📁  Google Drive", disabled=True,
+                      help="Enable 'Publish & Archive Report' to upload to Drive",
+                      use_container_width=True)
 
     with col2:
         if st.button("📧  Distribute via Email", type="primary", use_container_width=True):
@@ -471,12 +678,9 @@ def _render_email_modal(result: dict):
     with st.form("email_form"):
         st.markdown("#### 📧 Distribute Report")
         st.caption("Enter one email address per line.")
-        emails_raw = st.text_area(
-            "Recipients",
-            placeholder="alice@company.com\nbob@company.com",
-            height=100,
-            label_visibility="collapsed",
-        )
+        emails_raw = st.text_area("Recipients",
+                                   placeholder="alice@company.com\nbob@company.com",
+                                   height=100, label_visibility="collapsed")
         col_send, col_cancel = st.columns(2)
         with col_send:
             send = st.form_submit_button("Send Report", type="primary", use_container_width=True)
