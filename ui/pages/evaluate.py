@@ -70,7 +70,7 @@ def _section_has_content(text: str) -> bool:
 
 def render():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-    st.markdown("## Intelligence Evaluation")
+    st.markdown("## Comp Intel Evaluation")
     st.markdown(
         "<p style='color:#64748b;margin-top:-8px;font-size:14px'>"
         "Configure your research scope and run the AI agent across selected competitors.</p>",
