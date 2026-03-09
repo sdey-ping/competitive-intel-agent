@@ -3,8 +3,8 @@
     "vendor_name": "Okta",
     "website_url": "https://www.okta.com",
     "blog_url": "https://www.okta.com/blog/",
-    "docs_url": "https://developer.okta.com/docs/",
-    "changelog_url": "https://developer.okta.com/docs/release-notes/",
-    "youtube_channel": "@Okta"
+    "docs_url": "https://help.okta.com/wf/en-us/content/topics/workflows/workflows-main.htm?cshid=ext-Okta-workflows",
+    "changelog_url": "https://help.okta.com/wf/en-us/content/topics/releasenotes/workflows/production.htm",
+    "youtube_channel": "@OktaInc"
   }
 ]
