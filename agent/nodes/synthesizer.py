@@ -371,10 +371,10 @@ def synthesizer_node(state: AgentState) -> AgentState:
                 vendor_name=vendor_name,
                 research_query=research_query,
                 target_feature=target_feature or research_query,
-                web_content=item.get("web_content", "Not available")[:4000],
-                docs_content=item.get("docs_content", "Not available")[:4000],
-                youtube_content=item.get("youtube_content", "Not available")[:3000],
-                scrapbook_content=item.get("scrapbook_content", "Not available")[:2000],
+                web_content=item.get("web_content", "Not available")[:40000],
+                docs_content=item.get("docs_content", "Not available")[:40000],
+                youtube_content=item.get("youtube_content", "Not available")[:10000],
+                scrapbook_content=item.get("scrapbook_content", "Not available")[:8000],
                 image_note=image_note,
             )
 
