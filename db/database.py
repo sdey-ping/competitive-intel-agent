@@ -39,7 +39,7 @@ def init_db():
             vendors_covered TEXT,
             report_markdown TEXT,
             gdrive_link TEXT,
-            run_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            run_date TEXT NOT NULL DEFAULT (datetime('now','localtime'))
         )
     """)
 
@@ -57,10 +57,55 @@ def init_db():
 
     conn.commit()
 
+    # ── Migrate reports table if old schema has NOT NULL on run_date ───────────
+    _migrate_reports_table(conn)
+
     # ── Seed competitors from config/competitors.json if table is empty ────────
     _seed_competitors_if_empty(conn)
 
     conn.close()
+
+
+def _migrate_reports_table(conn):
+    """
+    Streamlit Cloud wipes the filesystem on redeploy, but if an old DB persists
+    (e.g. on a local dev machine or mounted volume) the reports table may have
+    run_date as NOT NULL without a default. Recreate it with the correct schema.
+    """
+    try:
+        c = conn.cursor()
+        # Check if run_date column has a NOT NULL constraint with no default
+        info = c.execute("PRAGMA table_info(reports)").fetchall()
+        for col in info:
+            col = dict(col)
+            if col["name"] == "run_date":
+                # dflt_value is None and notnull is 1 → broken schema
+                if col["notnull"] == 1 and col["dflt_value"] is None:
+                    # Recreate the table with the correct schema
+                    c.execute("ALTER TABLE reports RENAME TO reports_old")
+                    c.execute("""
+                        CREATE TABLE reports (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            research_query TEXT,
+                            vendors_covered TEXT,
+                            report_markdown TEXT,
+                            gdrive_link TEXT,
+                            run_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                        )
+                    """)
+                    c.execute("""
+                        INSERT INTO reports
+                            (id, research_query, vendors_covered, report_markdown, gdrive_link, run_date)
+                        SELECT
+                            id, research_query, vendors_covered, report_markdown, gdrive_link,
+                            COALESCE(run_date, CURRENT_TIMESTAMP)
+                        FROM reports_old
+                    """)
+                    c.execute("DROP TABLE reports_old")
+                    conn.commit()
+                break
+    except Exception as e:
+        print(f"[database] Migration warning: {e}")
 
 
 def _seed_competitors_if_empty(conn):
@@ -222,13 +267,14 @@ def _rebuild_seed_file():
 def save_report(research_query, vendors_covered, report_markdown, gdrive_link="") -> int:
     conn = get_connection()
     cursor = conn.execute("""
-        INSERT INTO reports (research_query, vendors_covered, report_markdown, gdrive_link)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO reports (research_query, vendors_covered, report_markdown, gdrive_link, run_date)
+        VALUES (?, ?, ?, ?, ?)
     """, (
         research_query,
         json.dumps(vendors_covered),
         report_markdown,
         gdrive_link,
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     ))
     report_id = cursor.lastrowid
     conn.commit()
