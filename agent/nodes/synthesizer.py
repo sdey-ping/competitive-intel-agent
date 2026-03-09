@@ -15,8 +15,11 @@ Rules:
 - When images are provided (UI screenshots, diagrams, pricing tables, roadmap slides), extract every 
   visible detail — button labels, menu items, field names, workflow steps, error states, data formats.
 - Prioritize technical depth over breadth. A PM reading this should walk away knowing exactly how 
-  this competitor works and where they are strong or weak."""
+  this competitor works and where they are strong or weak.
+- CRITICAL: The research question is the PRIMARY lens. Every section must directly answer or connect
+  back to what was asked. Do not produce generic boilerplate — answer the actual question."""
 
+# --- NEW: Research-first prompt that leads with a direct answer ---
 SYNTHESIS_PROMPT = """
 Competitor: {vendor_name}
 Research Focus: {research_query}
@@ -35,57 +38,71 @@ Research Focus: {research_query}
 
 {image_note}
 ---
-Produce a DEEP competitive intelligence report with the following sections.
-Be specific, technical, and grounded in the actual source content above.
+
+## IMPORTANT: Answer the research question first, then provide supporting detail.
+
+The user's research question is: "{research_query}"
+
+Produce your analysis in the following structure. Every section must be filtered through the lens
+of the research question above — if a section is not relevant to the question, say so briefly 
+rather than padding with generic content.
+
+## Direct Answer
+Provide a 2-4 sentence direct, specific answer to the research question based solely on what
+is found in the source content above. This is the most important section. Be blunt and specific.
 
 ## Recent Feature Launches & Updates
-List every specific feature, update, or announcement found. Include:
+List features/updates that are RELEVANT TO THE RESEARCH QUESTION. For each:
 - Feature name and what it does
-- When it was launched (if mentioned)
+- When launched (if mentioned)
 - Which customer segment it targets
-- Any technical implementation details mentioned
+- Technical implementation details if mentioned
+If no relevant launches found in sources, say so explicitly.
 
 ## Use Cases & Target Segments
-- What specific problems does this vendor solve, and for whom?
-- List concrete use cases with details (e.g. "real-time inventory sync for D2C brands", not just "inventory management")
-- Which industries or company sizes do they explicitly target?
-- What workflows or jobs-to-be-done do their case studies and docs highlight?
+Focus only on use cases directly relevant to the research question.
+- Specific problems this vendor solves, and for whom
+- Concrete use cases with details
+- Industries or company sizes explicitly targeted
+- Workflows or jobs-to-be-done highlighted in case studies/docs
 
 ## Technical Architecture & Protocol Support
-- What APIs, protocols, or standards do they support? (REST, GraphQL, WebSockets, MQTT, OAuth, SAML, etc.)
-- What are their integration capabilities? (native connectors, webhooks, SDKs, iPaaS support)
-- What are their infrastructure or deployment options? (cloud, on-prem, multi-tenant, SOC2, GDPR, etc.)
-- Any technical limitations, known constraints, or deprecations mentioned?
-- What data formats do they work with? (JSON, XML, CSV, Parquet, etc.)
+Technical details relevant to the research question:
+- APIs, protocols, or standards (REST, GraphQL, WebSockets, etc.)
+- Integration capabilities (connectors, webhooks, SDKs)
+- Infrastructure/deployment options (cloud, on-prem, SOC2, GDPR)
+- Known constraints or deprecations
+- Data formats supported
 
 ## User Interface & User Experience
-- Describe the UI paradigm — is it wizard-based, drag-and-drop, code-first, dashboard-centric?
-- What specific UI components or workflows are visible in screenshots or described in docs?
-- How do they handle onboarding, empty states, or first-run experience?
-- Any notable UX patterns — inline editing, bulk actions, keyboard shortcuts, templates?
-- Mobile or accessibility support mentioned?
+UI/UX aspects relevant to the research question:
+- UI paradigm (wizard-based, drag-and-drop, code-first, dashboard-centric)
+- Specific UI components or workflows visible in screenshots or docs
+- Onboarding and first-run experience
+- Notable UX patterns
 
 ## Pricing & Packaging
-- List specific pricing tiers with names, prices, and what's included if available
-- What are the usage limits or metering dimensions? (seats, API calls, records, events)
-- Any freemium, trial, or PLG motion?
-- Enterprise vs. self-serve split — how do they draw that line?
-- Any recent pricing changes or signals?
+Pricing details relevant to the research question:
+- Specific tier names, prices, and inclusions
+- Usage limits or metering dimensions
+- Freemium/trial/PLG motion
+- Enterprise vs self-serve split
 
 ## Strategic Direction & Roadmap Signals
-- Where does this vendor appear to be headed in the next 6-12 months?
-- What themes dominate their recent blog posts, conference talks, and release notes?
-- Any acquisitions, partnerships, or platform bets mentioned?
-- What problems are they visibly investing in solving next?
+Where this vendor is headed, filtered through the research question:
+- Direction for next 6-12 months based on content
+- Dominant themes in blog posts, releases, talks
+- Acquisitions, partnerships, platform bets
+- Problems they are visibly investing in solving
 
 ## Gaps vs Your Product
-- What capabilities does this vendor have that may be ahead of your product? Be specific.
-- Where are they clearly weaker or missing functionality?
-- What do their negative reviews or support issues reveal about pain points?
-- What is your best differentiation opportunity based on this analysis?
+- Where this vendor appears ahead — be specific
+- Where they appear weaker or missing functionality
+- Pain points revealed by reviews or support content
+- Your best differentiation opportunity
 
 ## Key Watch Points
-Top 3-5 specific things to monitor about this vendor in the next quarter, with reasoning.
+Top 3-5 things to monitor next quarter, directly tied to the research question. With reasoning.
 """
 
 
@@ -160,6 +177,8 @@ def synthesizer_node(state: AgentState) -> AgentState:
 
             synthesis: CompetitorSynthesis = {
                 "vendor_name": vendor_name,
+                # NEW: direct_answer is extracted and stored
+                "direct_answer": _extract_section(raw_synthesis, "Direct Answer"),
                 "recent_launches": _extract_section(raw_synthesis, "Recent Feature Launches"),
                 "use_cases": _extract_section(raw_synthesis, "Use Cases"),
                 "technical_details": _extract_section(raw_synthesis, "Technical Architecture"),
