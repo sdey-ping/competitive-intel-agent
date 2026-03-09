@@ -12,7 +12,7 @@ class CompetitorRawData(TypedDict):
 
 class CompetitorSynthesis(TypedDict):
     vendor_name: str
-    direct_answer: str        # NEW: direct answer to the research question — shown first in UI
+    direct_answer: str          # Direct answer to the research question
     recent_launches: str
     use_cases: str
     technical_details: str
@@ -22,6 +22,7 @@ class CompetitorSynthesis(TypedDict):
     gap_vs_your_product: str
     watch_points: str
     raw_synthesis: str
+    analysis_mode: str          # Which mode was used for this synthesis
 
 
 class DiffResult(TypedDict):
@@ -35,6 +36,11 @@ class AgentState(TypedDict):
     vendors: List[str]
     research_query: str
     save_to_drive: bool
+
+    # ── Intent Classification ──────────────────
+    analysis_mode: str          # "feature_deep_dive" | "landscape_scan" | "strategic" | "battle_card"
+    target_feature: str         # Populated when mode == "feature_deep_dive"
+    mode_confidence: str        # "auto" | "user_override"
 
     # ── Intermediate ──────────────────────────
     raw_data: List[CompetitorRawData]
