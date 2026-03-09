@@ -6,17 +6,14 @@ from db.database import save_report, save_diff_log
 
 
 def report_writer_node(state: AgentState) -> AgentState:
-    """
-    Format the final markdown report.
-    Conditionally saves to SQLite + uploads to Google Drive based on save_to_drive flag.
-    Tracks timing for analysis and drive upload separately.
-    """
     syntheses = state.get("syntheses", [])
     diffs = state.get("diffs", [])
     research_query = state.get("research_query", "General competitive overview")
     vendors = state.get("vendors", [])
     errors = state.get("errors", [])
     save_to_drive = state.get("save_to_drive", False)
+    analysis_mode = state.get("analysis_mode", "strategic")
+    target_feature = state.get("target_feature", "")
 
     diff_lookup = {d["vendor_name"]: d for d in diffs}
 
@@ -24,84 +21,39 @@ def report_writer_node(state: AgentState) -> AgentState:
     date_str = now.strftime("%B %d, %Y")
     time_str = now.strftime("%H:%M")
 
-    # ── Build Markdown Report ──────────────────────────────────────────────────
-    lines = [
-        "# Competitive Intelligence Report",
-        f"**Date:** {date_str} at {time_str}  ",
-        f"**Research Focus:** {research_query}  ",
-        f"**Vendors Analyzed:** {', '.join(vendors)}",
-        "",
-        "---",
-        "",
-        "## 🔔 What's New Since Last Run",
-        "",
-    ]
+    # ── Route to the correct report builder ───────────────────────────────────
+    builder = {
+        "feature_deep_dive": _build_feature_deep_dive_report,
+        "landscape_scan":    _build_landscape_scan_report,
+        "strategic":         _build_strategic_report,
+        "battle_card":       _build_battle_card_report,
+    }.get(analysis_mode, _build_strategic_report)
 
-    if diffs:
-        for diff in diffs:
-            lines.append(f"### {diff['vendor_name']}")
-            lines.append(diff["delta_summary"])
-            lines.append("")
-    else:
-        lines.append("_This is the first run. No previous snapshot to compare against._")
-        lines.append("")
+    report_markdown = builder(
+        syntheses=syntheses,
+        diffs=diffs,
+        diff_lookup=diff_lookup,
+        research_query=research_query,
+        vendors=vendors,
+        analysis_mode=analysis_mode,
+        target_feature=target_feature,
+        date_str=date_str,
+        time_str=time_str,
+        errors=errors,
+    )
 
-    lines += ["---", "", "## 📊 Full Intelligence by Vendor", ""]
-
-    for synthesis in syntheses:
-        vendor = synthesis["vendor_name"]
-        lines += [
-            f"## {vendor}",
-            "",
-            "### 🚀 Recent Feature Launches & Updates",
-            synthesis.get("recent_launches", "_No data_"),
-            "",
-            "### 🎯 Use Cases & Target Segments",
-            synthesis.get("use_cases", "_No data_"),
-            "",
-            "### ⚙️ Technical Architecture & Protocol Support",
-            synthesis.get("technical_details", "_No data_"),
-            "",
-            "### 🖥️ User Interface & UX",
-            synthesis.get("ui_ux", "_No data_"),
-            "",
-            "### 💰 Pricing & Packaging",
-            synthesis.get("pricing_signals", "_No data_"),
-            "",
-            "### 🧭 Strategic Direction",
-            synthesis.get("strategic_direction", "_No data_"),
-            "",
-            "### ⚔️ Gaps vs Your Product",
-            synthesis.get("gap_vs_your_product", "_No data_"),
-            "",
-            "### 👁️ Key Watch Points",
-            synthesis.get("watch_points", "_No data_"),
-            "",
-            "---",
-            "",
-        ]
-
-    if errors:
-        lines += ["## ⚠️ Errors During This Run", ""]
-        for err in errors:
-            lines.append(f"- {err}")
-
-    report_markdown = "\n".join(lines)
-
-    # ── Save to SQLite + Drive (only if save_to_drive is enabled) ─────────────
+    # ── Persist ───────────────────────────────────────────────────────────────
     gdrive_link = ""
     drive_duration = 0.0
 
     if save_to_drive:
         drive_start = time.time()
-
         report_id = save_report(
             research_query=research_query,
             vendors_covered=vendors,
             report_markdown=report_markdown,
             gdrive_link="",
         )
-
         for synthesis in syntheses:
             vendor_name = synthesis["vendor_name"]
             diff = diff_lookup.get(vendor_name, {})
@@ -112,15 +64,11 @@ def report_writer_node(state: AgentState) -> AgentState:
                 new_snapshot=synthesis["raw_synthesis"],
                 delta_summary=diff.get("delta_summary", ""),
             )
-
         date_file = now.strftime("%Y-%m-%d")
-        filename = f"Competitive Intelligence — {date_file} — {research_query[:40]}"
+        filename = f"CompIntel — {date_file} — {research_query[:40]}"
         gdrive_link = upload_report_to_drive(report_markdown, filename)
-
         drive_duration = round(time.time() - drive_start, 1)
     else:
-        # Still save diff logs to SQLite for future diff comparisons
-        # but do NOT save the full report or upload to Drive
         report_id = save_report(
             research_query=research_query,
             vendors_covered=vendors,
@@ -146,3 +94,185 @@ def report_writer_node(state: AgentState) -> AgentState:
         "errors": errors,
         "current_step": "report_complete",
     }
+
+
+# ── Report builders ────────────────────────────────────────────────────────────
+
+def _header(research_query, date_str, time_str, vendors, mode_label, target_feature=""):
+    feature_line = f"**Feature in Focus:** {target_feature}  \n" if target_feature else ""
+    return [
+        f"# Competitive Intelligence Report — {mode_label}",
+        f"**Date:** {date_str} at {time_str}  ",
+        f"**Research Focus:** {research_query}  ",
+        feature_line,
+        f"**Vendors Analyzed:** {', '.join(vendors)}",
+        "",
+        "---",
+        "",
+    ]
+
+
+def _diff_section(diffs):
+    lines = ["## 🔔 What's New Since Last Run", ""]
+    if diffs:
+        for diff in diffs:
+            lines.append(f"### {diff['vendor_name']}")
+            lines.append(diff["delta_summary"])
+            lines.append("")
+    else:
+        lines.append("_First run — no previous snapshot to compare._")
+        lines.append("")
+    lines += ["---", ""]
+    return lines
+
+
+def _build_feature_deep_dive_report(syntheses, diffs, diff_lookup, research_query,
+                                     vendors, analysis_mode, target_feature,
+                                     date_str, time_str, errors, **_):
+    lines = _header(research_query, date_str, time_str, vendors,
+                    "🔬 Feature Deep Dive", target_feature)
+    lines += _diff_section(diffs)
+
+    for s in syntheses:
+        lines += [
+            f"## {s['vendor_name']}",
+            "",
+            "### Direct Answer",
+            s.get("direct_answer", "_No data_"),
+            "",
+            "### What This Feature Does",
+            s.get("recent_launches", "_No data_"),
+            "",
+            "### Who It's Built For",
+            s.get("use_cases", "_No data_"),
+            "",
+            "### How It Fits Into Their Product Strategy",
+            s.get("strategic_direction", "_No data_"),
+            "",
+            "### How It Compares to Our Product",
+            s.get("gap_vs_your_product", "_No data_"),
+            "",
+            "### Watch Points",
+            s.get("watch_points", "_No data_"),
+            "",
+            "---",
+            "",
+        ]
+    if errors:
+        lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
+    return "\n".join(lines)
+
+
+def _build_landscape_scan_report(syntheses, diffs, diff_lookup, research_query,
+                                  vendors, analysis_mode, target_feature,
+                                  date_str, time_str, errors, **_):
+    lines = _header(research_query, date_str, time_str, vendors, "📋 Landscape Scan")
+    lines += _diff_section(diffs)
+
+    for s in syntheses:
+        lines += [
+            f"## {s['vendor_name']}",
+            "",
+            "### Summary",
+            s.get("direct_answer", "_No data_"),
+            "",
+            "### Recent Launches",
+            s.get("recent_launches", "_No data_"),
+            "",
+            "### Signals & Themes",
+            s.get("strategic_direction", "_No data_"),
+            "",
+            "### Gaps in Their Activity",
+            s.get("gap_vs_your_product", "_No data_"),
+            "",
+            "---",
+            "",
+        ]
+    if errors:
+        lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
+    return "\n".join(lines)
+
+
+def _build_strategic_report(syntheses, diffs, diff_lookup, research_query,
+                             vendors, analysis_mode, target_feature,
+                             date_str, time_str, errors, **_):
+    lines = _header(research_query, date_str, time_str, vendors, "🧭 Strategic Analysis")
+    lines += _diff_section(diffs)
+    lines += ["## 📊 Full Intelligence by Vendor", ""]
+
+    for s in syntheses:
+        lines += [
+            f"## {s['vendor_name']}",
+            "",
+            "### Direct Answer",
+            s.get("direct_answer", "_No data_"),
+            "",
+            "### 🚀 Recent Feature Launches & Updates",
+            s.get("recent_launches", "_No data_"),
+            "",
+            "### 🎯 Use Cases & Target Segments",
+            s.get("use_cases", "_No data_"),
+            "",
+            "### ⚙️ Technical Architecture & Protocol Support",
+            s.get("technical_details", "_No data_"),
+            "",
+            "### 🖥️ User Interface & UX",
+            s.get("ui_ux", "_No data_"),
+            "",
+            "### 💰 Pricing & Packaging",
+            s.get("pricing_signals", "_No data_"),
+            "",
+            "### 🧭 Strategic Direction",
+            s.get("strategic_direction", "_No data_"),
+            "",
+            "### ⚔️ Gaps vs Your Product",
+            s.get("gap_vs_your_product", "_No data_"),
+            "",
+            "### 👁️ Key Watch Points",
+            s.get("watch_points", "_No data_"),
+            "",
+            "---",
+            "",
+        ]
+    if errors:
+        lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
+    return "\n".join(lines)
+
+
+def _build_battle_card_report(syntheses, diffs, diff_lookup, research_query,
+                               vendors, analysis_mode, target_feature,
+                               date_str, time_str, errors, **_):
+    lines = _header(research_query, date_str, time_str, vendors, "⚔️ Battle Card")
+    lines += _diff_section(diffs)
+
+    for s in syntheses:
+        lines += [
+            f"## {s['vendor_name']}",
+            "",
+            "### One-Line Answer",
+            s.get("direct_answer", "_No data_"),
+            "",
+            "### ✅ Their Top 3 Strengths",
+            s.get("recent_launches", "_No data_"),
+            "",
+            "### ❌ Their Top 3 Weaknesses",
+            s.get("gap_vs_your_product", "_No data_"),
+            "",
+            "### 🏆 Where We Win",
+            s.get("strategic_direction", "_No data_"),
+            "",
+            "### 💬 Common Objections & Responses",
+            s.get("use_cases", "_No data_"),
+            "",
+            "### 💰 Pricing Summary",
+            s.get("pricing_signals", "_No data_"),
+            "",
+            "### 🎯 One-Line Positioning",
+            s.get("watch_points", "_No data_"),
+            "",
+            "---",
+            "",
+        ]
+    if errors:
+        lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
+    return "\n".join(lines)
