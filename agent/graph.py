@@ -9,8 +9,6 @@ from agent.nodes.diff_engine import diff_engine_node
 from agent.nodes.report_writer import report_writer_node
 
 
-# Ordered node names — used by UI to compute exact progress %
-# intent_classifier is fast (single LLM call) so it shares the first step visually
 PIPELINE_STEPS = [
     "intent_classifier",
     "web_scraper",
@@ -34,7 +32,6 @@ STEP_LABELS = {
 
 def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
-
     graph.add_node("intent_classifier", intent_classifier_node)
     graph.add_node("web_scraper",        web_scraper_node)
     graph.add_node("youtube_scraper",    youtube_scraper_node)
@@ -42,7 +39,6 @@ def build_graph() -> StateGraph:
     graph.add_node("synthesizer",        synthesizer_node)
     graph.add_node("diff_engine",        diff_engine_node)
     graph.add_node("report_writer",      report_writer_node)
-
     graph.set_entry_point("intent_classifier")
     graph.add_edge("intent_classifier", "web_scraper")
     graph.add_edge("web_scraper",        "youtube_scraper")
@@ -51,46 +47,41 @@ def build_graph() -> StateGraph:
     graph.add_edge("synthesizer",        "diff_engine")
     graph.add_edge("diff_engine",        "report_writer")
     graph.add_edge("report_writer",      END)
-
     return graph.compile()
 
 
 def run_agent(vendors: list, research_query: str, save_to_drive: bool = False,
-              analysis_mode: str = "", target_feature: str = "") -> AgentState:
-    """Invoke the full pipeline (blocking). Returns final state."""
+              use_scrapbook: bool = False, analysis_mode: str = "",
+              target_feature: str = "") -> AgentState:
     app = build_graph()
     initial_state = _make_initial_state(vendors, research_query, save_to_drive,
-                                        analysis_mode, target_feature)
+                                        use_scrapbook, analysis_mode, target_feature)
     return app.invoke(initial_state)
 
 
 def stream_agent(vendors: list, research_query: str, save_to_drive: bool = False,
-                 analysis_mode: str = "", target_feature: str = ""):
-    """
-    Stream the pipeline node-by-node.
-    Yields (node_name, partial_state) after each node completes.
-    """
+                 use_scrapbook: bool = False, analysis_mode: str = "",
+                 target_feature: str = ""):
     app = build_graph()
     initial_state = _make_initial_state(vendors, research_query, save_to_drive,
-                                        analysis_mode, target_feature)
-
+                                        use_scrapbook, analysis_mode, target_feature)
     final_state = initial_state
     for event in app.stream(initial_state, stream_mode="updates"):
         for node_name, node_output in event.items():
             final_state = {**final_state, **node_output}
             yield node_name, final_state
-
     yield "__end__", final_state
 
 
 def _make_initial_state(vendors, research_query, save_to_drive,
-                        analysis_mode="", target_feature="") -> AgentState:
-    # If user passed a mode explicitly, mark it as override so classifier skips
+                        use_scrapbook=False, analysis_mode="",
+                        target_feature="") -> AgentState:
     mode_confidence = "user_override" if analysis_mode else "auto"
     return {
         "vendors": vendors,
         "research_query": research_query,
         "save_to_drive": save_to_drive,
+        "use_scrapbook": use_scrapbook,
         "analysis_mode": analysis_mode or "strategic",
         "target_feature": target_feature,
         "mode_confidence": mode_confidence,
