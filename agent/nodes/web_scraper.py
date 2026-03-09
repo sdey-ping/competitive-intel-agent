@@ -4,14 +4,9 @@ from db.database import get_competitor_by_name
 
 
 def web_scraper_node(state: AgentState) -> AgentState:
-    """
-    Fetch and scrape website, blog, docs, and changelog content for each vendor.
-    Splits content into web_content (marketing) and docs_content (technical).
-    """
     vendors = state["vendors"]
     raw_data = state.get("raw_data", [])
     errors = state.get("errors", [])
-
     existing = {d["vendor_name"]: d for d in raw_data}
 
     for vendor_name in vendors:
@@ -20,25 +15,26 @@ def web_scraper_node(state: AgentState) -> AgentState:
             errors.append(f"Vendor '{vendor_name}' not found in database.")
             continue
 
-        # ── Marketing content (website + blog) ────────────────────────────────
-        marketing_urls = [
+        marketing_urls = [u for u in [
             competitor.get("website_url", ""),
             competitor.get("blog_url", ""),
-        ]
-        marketing_urls = [u for u in marketing_urls if u]
-        web_content = scrape_multiple(marketing_urls) if marketing_urls else ""
+        ] if u]
 
-        # ── Technical content (docs + changelog) ──────────────────────────────
-        technical_urls = [
+        technical_urls = [u for u in [
             competitor.get("docs_url", ""),
             competitor.get("changelog_url", ""),
-        ]
-        technical_urls = [u for u in technical_urls if u]
+        ] if u]
+
+        web_content = scrape_multiple(marketing_urls) if marketing_urls else ""
         docs_content = scrape_multiple(technical_urls) if technical_urls else ""
+
+        # Track all URLs actually scraped — surfaced in UI as reference links
+        all_urls = [u for u in marketing_urls + technical_urls if u]
 
         if vendor_name in existing:
             existing[vendor_name]["web_content"] = web_content
             existing[vendor_name]["docs_content"] = docs_content
+            existing[vendor_name]["source_urls"] = all_urls
         else:
             existing[vendor_name] = {
                 "vendor_name": vendor_name,
@@ -47,6 +43,7 @@ def web_scraper_node(state: AgentState) -> AgentState:
                 "youtube_content": "",
                 "scrapbook_content": "",
                 "scrapbook_images": [],
+                "source_urls": all_urls,
             }
 
     return {
