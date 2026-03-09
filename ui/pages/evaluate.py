@@ -632,7 +632,7 @@ def _render_battle_card(result: dict):
         positioning = s.get("watch_points", "").strip()
         if positioning:
             st.markdown(
-                f"<div class='positioning-statement'>"{positioning}"</div>",
+                f"<div class='positioning-statement'>&ldquo;{positioning}&rdquo;</div>",
                 unsafe_allow_html=True
             )
 
