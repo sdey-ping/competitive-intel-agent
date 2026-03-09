@@ -48,16 +48,22 @@ _IRRELEVANT_MARKERS = [
     "not found in available sources",
     "not applicable",
     "not relevant to this research",
+    "no data retrieved",
+    "not directly applicable",
+    "this section is not relevant",
 ]
 
 
 def _section_has_content(text: str) -> bool:
-    """True only if section has substantive, research-relevant content."""
-    if not text or len(text.strip()) < 100:
+    """True only if section has substantive, research-relevant content (not filler)."""
+    if not text or len(text.strip()) < 150:
         return False
     lower = text.lower().strip()
     for marker in _IRRELEVANT_MARKERS:
-        if lower.startswith(marker) or lower[:200].count(marker) > 0:
+        if lower.startswith(marker):
+            return False
+        # Also catch it anywhere in the first 300 chars (GPT sometimes preambles)
+        if marker in lower[:300]:
             return False
     return True
 
@@ -371,23 +377,47 @@ def _render_results(result: dict):
 # ── Per-mode renderers ─────────────────────────────────────────────────────────
 
 def _render_reference_links(synthesis: dict):
-    """Render source reference links for a vendor."""
+    """Render source reference links for a vendor. Filters bare root domains."""
+    import re
     urls = synthesis.get("source_urls", [])
     if not urls:
         return
+
+    # Filter out bare root domains (no meaningful path)
+    def _is_deep_link(entry: str) -> bool:
+        # Extract URL from markdown link or bare URL
+        m = re.search(r'https?://([^\s\)]+)', entry)
+        if not m:
+            return False
+        full = m.group(0).rstrip(".,;)")
+        path = full.split("//", 1)[-1]  # strip scheme
+        parts = path.split("/", 1)
+        if len(parts) < 2 or not parts[1].strip("/"):
+            return False  # root domain only
+        return True
+
+    deep_links = [u for u in urls if _is_deep_link(u)]
+    if not deep_links:
+        return
+
     st.markdown(
         "<div class='ref-links-box'>"
         "<div class='ref-links-label'>📎 Reference Sources</div>",
         unsafe_allow_html=True
     )
-    for url in urls:
-        if url.startswith("http"):
-            # Try to show a clean label
-            label = url.split("//")[-1].split("/")[0]
-            st.markdown(f"- [{label}]({url})")
+    for entry in deep_links:
+        if entry.startswith("["):
+            # Already formatted as [Title](url)
+            st.markdown(f"- {entry}")
         else:
-            # Already a markdown link like [title](url)
-            st.markdown(f"- {url}")
+            # Bare URL — derive readable label from path
+            m = re.search(r'https?://([^\s\)]+)', entry)
+            if m:
+                url = m.group(0).rstrip(".,;)")
+                path_parts = url.split("//", 1)[-1].split("/")
+                label = " › ".join(p.replace("-", " ").replace("_", " ").title()
+                                   for p in path_parts if p)[:80]
+                st.markdown(f"- [{label}]({url})")
     st.markdown("</div>", unsafe_allow_html=True)
 
 
@@ -483,27 +513,35 @@ def _render_strategic(result: dict):
                     unsafe_allow_html=True
                 )
 
-    # Supporting sections — only tabs with real content, no UI/UX
+    # Supporting sections — only render if 2+ sections have real content, no UI/UX
     for s in syntheses:
         relevant = [
             (label, key) for label, key in STRATEGIC_SECTIONS
             if _section_has_content(s.get(key, ""))
         ]
 
-        if relevant:
+        # Only show Supporting Intelligence if there's genuinely additive detail
+        if len(relevant) >= 2:
             st.markdown("<div class='section-header'>Supporting Intelligence</div>",
                         unsafe_allow_html=True)
-            with st.expander(f"  {s['vendor_name']} — {len(relevant)} relevant section(s)", expanded=False):
-                if len(relevant) == 1:
-                    label, key = relevant[0]
-                    st.markdown(f"**{label}**")
-                    st.markdown(s.get(key, ""))
-                else:
-                    tabs = st.tabs([label for label, _ in relevant])
-                    for tab, (_, key) in zip(tabs, relevant):
-                        with tab:
-                            st.markdown(s.get(key, ""))
+            with st.expander(f"  {s['vendor_name']} — {len(relevant)} supporting section(s)", expanded=False):
+                tabs = st.tabs([label for label, _ in relevant])
+                for tab, (_, key) in zip(tabs, relevant):
+                    with tab:
+                        st.markdown(s.get(key, ""))
                 _render_reference_links(s)
+        elif len(relevant) == 1:
+            # Single section — just render inline under vendor, no tab chrome
+            label, key = relevant[0]
+            with st.expander(f"  {s['vendor_name']} — {label}", expanded=False):
+                st.markdown(s.get(key, ""))
+                _render_reference_links(s)
+        else:
+            # No supporting sections — still show reference links if available
+            urls = synthesis.get("source_urls", []) if False else s.get("source_urls", [])
+            if urls:
+                with st.expander(f"  {s['vendor_name']} — Reference Sources", expanded=False):
+                    _render_reference_links(s)
 
 
 def _render_battle_card(result: dict):
