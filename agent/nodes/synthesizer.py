@@ -79,9 +79,11 @@ Length should match the complexity of the question — do not artificially limit
 2-3 specific follow-up questions worth monitoring next quarter.
 
 ## Reference Links
-List the exact source URLs that contained relevant information for this analysis.
-Format each as: - [Page title or description](URL)
-Only include URLs that were actually in the source content provided above.
+List the specific page URLs from the source content that contained relevant information.
+RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
+(2) Format each as: - [Descriptive page title](https://full-url-to-specific-page)
+(3) Only include URLs visibly present in the source content above.
+(4) If no specific deep-link URLs appear in the source, write "No specific URLs found in source."
 """
 
 
@@ -124,9 +126,11 @@ Do not fabricate dates.
 What areas seem notably absent from recent activity?
 
 ## Reference Links
-List the exact source URLs that contained relevant information for this analysis.
-Format each as: - [Page title or description](URL)
-Only include URLs that were actually in the source content provided above.
+List the specific page URLs from the source content that contained relevant information.
+RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
+(2) Format each as: - [Descriptive page title](https://full-url-to-specific-page)
+(3) Only include URLs visibly present in the source content above.
+(4) If no specific deep-link URLs appear in the source, write "No specific URLs found in source."
 """
 
 
@@ -206,9 +210,11 @@ For each: should we build something here? What specifically?
 If not relevant: "Not directly relevant to this research focus."
 
 ## Reference Links
-List the exact source URLs that contained relevant information for this analysis.
-Format each as: - [Page title or description](URL)
-Only include URLs that were actually in the source content provided above.
+List the specific page URLs from the source content that contained relevant information.
+RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
+(2) Format each as: - [Descriptive page title](https://full-url-to-specific-page)
+(3) Only include URLs visibly present in the source content above.
+(4) If no specific deep-link URLs appear in the source, write "No specific URLs found in source."
 """
 
 
@@ -257,9 +263,11 @@ Known tiers and limits. Enterprise motion. PLG or freemium.
 A single sentence defining how to position against {vendor_name} in a sales call.
 
 ## Reference Links
-List the exact source URLs that contained relevant information for this analysis.
-Format each as: - [Page title or description](URL)
-Only include URLs that were actually in the source content provided above.
+List the specific page URLs from the source content that contained relevant information.
+RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
+(2) Format each as: - [Descriptive page title](https://full-url-to-specific-page)
+(3) Only include URLs visibly present in the source content above.
+(4) If no specific deep-link URLs appear in the source, write "No specific URLs found in source."
 """
 
 
@@ -416,26 +424,57 @@ def synthesizer_node(state: AgentState) -> AgentState:
 
 
 def _extract_section(text: str, section_title: str) -> str:
+    """
+    Extract content between two top-level (##) headings.
+    Critically: does NOT stop on ### or #### sub-headings inside the section —
+    only stops when another ## (exactly two hashes, not three+) heading appears.
+    """
     lines = text.split("\n")
     capturing = False
     result = []
     for line in lines:
-        if section_title.lower() in line.lower() and line.startswith("##"):
+        stripped = line.lstrip()
+        # Detect a ## heading (exactly — not ### or ####)
+        is_h2 = stripped.startswith("## ") or stripped == "##"
+        if is_h2 and section_title.lower() in line.lower():
             capturing = True
             continue
         if capturing:
-            if line.startswith("##"):
+            if is_h2:  # another top-level section starts — stop
                 break
             result.append(line)
     return "\n".join(result).strip()
 
 
 def _extract_reference_links(text: str) -> list[str]:
-    """Extract URLs from the Reference Links section of GPT output."""
+    """
+    Extract URLs from the Reference Links section of GPT output.
+    Only keeps URLs that have a real path (not bare root domains like https://okta.com/).
+    Preserves markdown link format [title](url) so UI can render proper labels.
+    """
     import re
     section = _extract_section(text, "Reference Links")
     if not section:
         return []
-    # Extract markdown links [text](url) or bare URLs
-    urls = re.findall(r'\(?(https?://[^\s\)]+)\)?', section)
-    return list(dict.fromkeys(urls))  # dedupe
+
+    results = []
+    # Prefer markdown links [Title](url) — preserve label
+    md_links = re.findall(r'\[([^\]]+)\]\((https?://[^\s\)]+)\)', section)
+    seen_urls = set()
+    for title, url in md_links:
+        # Strip trailing punctuation
+        url = url.rstrip(".,;)")
+        if url not in seen_urls:
+            seen_urls.add(url)
+            results.append(f"[{title}]({url})")
+
+    # Fall back to bare URLs if no markdown links found
+    if not results:
+        bare_urls = re.findall(r'https?://[^\s\)]+', section)
+        for url in bare_urls:
+            url = url.rstrip(".,;)")
+            if url not in seen_urls:
+                seen_urls.add(url)
+                results.append(url)
+
+    return results
