@@ -4,11 +4,16 @@ from agent.tools.gdrive_tool import get_scrapbook_section
 
 def gdoc_reader_node(state: AgentState) -> AgentState:
     """
-    Read personal scrapbook notes and images from Google Doc for each vendor.
-    The scrapbook folder contains one Doc per competitor, named after the vendor.
-    Each Doc can have multiple tabs grouping features by category.
-    Updates scrapbook_content and scrapbook_images in raw_data.
+    Read personal scrapbook notes from Google Doc for each vendor.
+    Only runs if use_scrapbook is True in state (user opt-in toggle in UI).
     """
+    # ── Respect user toggle — skip entirely if disabled ───────────────────────
+    if not state.get("use_scrapbook", False):
+        return {
+            **state,
+            "current_step": "gdoc_reading_complete",
+        }
+
     vendors = state["vendors"]
     raw_data = {d["vendor_name"]: d for d in state.get("raw_data", [])}
     errors = state.get("errors", [])
@@ -28,13 +33,8 @@ def gdoc_reader_node(state: AgentState) -> AgentState:
                 "youtube_content": "",
                 "scrapbook_content": scrapbook_text,
                 "scrapbook_images": scrapbook_images,
+                "source_urls": [],
             }
-
-        if scrapbook_images:
-            img_count = len(scrapbook_images)
-            errors_msg = f"📸 {img_count} image(s) found in scrapbook for {vendor_name} — will be analyzed by GPT-4o"
-            # Use errors list as a general log here (not actually an error)
-            # In a future version this could be a proper log channel
 
     return {
         **state,
