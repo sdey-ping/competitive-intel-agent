@@ -7,164 +7,63 @@ from agent.nodes.intent_classifier import MODE_META
 CUSTOM_CSS = """
 <style>
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
-
-.timing-card {
-    background: #ffffff;
-    border: 1px solid #e8e4dd;
-    border-radius: 12px;
-    padding: 18px 22px;
-    margin: 4px 0;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-}
-.timing-label {
-    font-size: 11px; font-weight: 600; letter-spacing: 0.07em;
-    text-transform: uppercase; color: #94a3b8; margin-bottom: 6px;
-}
-.timing-value {
-    font-family: 'JetBrains Mono', monospace; font-size: 30px;
-    font-weight: 500; color: #1a56db; line-height: 1;
-}
-.timing-sub { font-size: 11px; color: #94a3b8; margin-top: 5px; }
-
-.section-header {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
-    text-transform: uppercase; color: #94a3b8;
-    margin: 28px 0 14px 0; padding-bottom: 10px;
-    border-bottom: 1px solid #e8e4dd;
-}
-
-/* Mode selector pills */
-.mode-pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px 0; }
-.mode-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    border: 1.5px solid #e2ddd6; border-radius: 20px;
-    padding: 7px 16px; font-size: 13px; font-weight: 500;
-    color: #64748b; background: #ffffff; cursor: pointer;
-    transition: all 0.15s;
-}
-.mode-pill:hover { border-color: #1a56db; color: #1a56db; }
-.mode-pill.active {
-    background: #eff6ff; border-color: #1a56db;
-    color: #1a56db; font-weight: 600;
-}
-.mode-pill .mode-icon { font-size: 15px; }
-
-/* Mode banner shown in results */
-.mode-banner {
-    display: inline-flex; align-items: center; gap: 8px;
-    background: #f0f7ff; border: 1px solid #bfdbfe;
-    border-radius: 8px; padding: 8px 16px; margin-bottom: 16px;
-    font-size: 13px; font-weight: 600; color: #1a56db;
-}
-.mode-auto-badge {
-    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
-    text-transform: uppercase; background: #e0f2fe;
-    color: #0369a1; border-radius: 10px; padding: 2px 8px;
-}
-
-/* Research question banner */
-.research-banner {
-    background: #f8faff; border: 1px solid #e0e9ff;
-    border-radius: 10px; padding: 14px 18px; margin-bottom: 20px;
-}
-.research-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
-    text-transform: uppercase; color: #1a56db; margin-bottom: 4px;
-}
-.research-text { font-size: 13.5px; color: #1e293b; font-weight: 500; line-height: 1.5; }
-
-/* Direct answer card */
-.direct-answer-card {
-    background: #eff6ff; border: 1.5px solid #bfdbfe;
-    border-left: 4px solid #1a56db; border-radius: 12px;
-    padding: 20px 24px; margin: 8px 0 16px 0;
-}
-.direct-answer-vendor {
-    font-size: 11px; font-weight: 700; letter-spacing: 0.07em;
-    text-transform: uppercase; color: #1a56db; margin-bottom: 8px;
-}
-.direct-answer-text { font-size: 14px; color: #1e3a5f; line-height: 1.7; }
-
-/* Battle card layout */
-.battle-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
-.battle-cell {
-    background: #ffffff; border: 1px solid #e8e4dd;
-    border-radius: 10px; padding: 16px 18px;
-}
-.battle-cell.green { border-left: 3px solid #16a34a; }
-.battle-cell.red   { border-left: 3px solid #dc2626; }
-.battle-cell.blue  { border-left: 3px solid #1a56db; }
-.battle-cell-label {
-    font-size: 10px; font-weight: 700; letter-spacing: 0.07em;
-    text-transform: uppercase; margin-bottom: 10px;
-}
-
-/* Positioning statement */
-.positioning-statement {
-    background: #0f172a; color: #f8fafc;
-    border-radius: 12px; padding: 20px 24px;
-    font-size: 16px; font-weight: 600; line-height: 1.5;
-    margin: 16px 0; font-style: italic;
-}
-
-/* Save pills */
-.save-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #f0fdf4; border: 1px solid #86efac;
-    color: #15803d; border-radius: 20px;
-    padding: 5px 14px; font-size: 12px; font-weight: 600;
-}
-.nosave-pill {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #fffbeb; border: 1px solid #fcd34d;
-    color: #b45309; border-radius: 20px;
-    padding: 5px 14px; font-size: 12px; font-weight: 600;
-}
+.timing-card { background:#ffffff; border:1px solid #e8e4dd; border-radius:12px; padding:18px 22px; margin:4px 0; box-shadow:0 1px 4px rgba(0,0,0,0.05); }
+.timing-label { font-size:11px; font-weight:600; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:6px; }
+.timing-value { font-family:'JetBrains Mono',monospace; font-size:30px; font-weight:500; color:#1a56db; line-height:1; }
+.timing-sub { font-size:11px; color:#94a3b8; margin-top:5px; }
+.section-header { font-size:11px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#94a3b8; margin:28px 0 14px 0; padding-bottom:10px; border-bottom:1px solid #e8e4dd; }
+.mode-banner { display:inline-flex; align-items:center; gap:8px; background:#f0f7ff; border:1px solid #bfdbfe; border-radius:8px; padding:8px 16px; margin-bottom:16px; font-size:13px; font-weight:600; color:#1a56db; }
+.mode-auto-badge { font-size:10px; font-weight:600; letter-spacing:0.06em; text-transform:uppercase; background:#e0f2fe; color:#0369a1; border-radius:10px; padding:2px 8px; }
+.research-banner { background:#f8faff; border:1px solid #e0e9ff; border-radius:10px; padding:14px 18px; margin-bottom:20px; }
+.research-label { font-size:10px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; color:#1a56db; margin-bottom:4px; }
+.research-text { font-size:13.5px; color:#1e293b; font-weight:500; line-height:1.5; }
+.direct-answer-card { background:#eff6ff; border:1.5px solid #bfdbfe; border-left:4px solid #1a56db; border-radius:12px; padding:20px 24px; margin:8px 0 16px 0; }
+.direct-answer-vendor { font-size:11px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#1a56db; margin-bottom:8px; }
+.direct-answer-text { font-size:14px; color:#1e3a5f; line-height:1.7; }
+.positioning-statement { background:#0f172a; color:#f8fafc; border-radius:12px; padding:20px 24px; font-size:16px; font-weight:600; line-height:1.5; margin:16px 0; font-style:italic; }
+.ref-links-box { background:#f8f9fa; border:1px solid #e8e4dd; border-radius:10px; padding:14px 18px; margin-top:12px; }
+.ref-links-label { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:8px; }
+.save-pill { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
+.nosave-pill { display:inline-flex; align-items:center; gap:6px; background:#fffbeb; border:1px solid #fcd34d; color:#b45309; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
+.scrapbook-on { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
+.scrapbook-off { display:inline-flex; align-items:center; gap:6px; background:#f8f7f4; border:1px solid #e2ddd6; color:#94a3b8; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
 </style>
 """
 
-# Ordered list for rendering mode pills in UI
 MODE_ORDER = ["feature_deep_dive", "landscape_scan", "strategic", "battle_card"]
 
-# All 8 strategic sections in display order
-STRATEGIC_SECTION_DEFS = [
-    ("recent_launches",     "🚀 Launches"),
-    ("use_cases",           "🎯 Use Cases"),
-    ("technical_details",   "⚙️ Technical"),
-    ("ui_ux",               "🖥️ UI/UX"),
-    ("pricing_signals",     "💰 Pricing"),
-    ("strategic_direction", "🧭 Direction"),
-    ("gap_vs_your_product", "⚔️ Gaps"),
-    ("watch_points",        "👁️ Watch"),
+# Strategic mode sections — UI/UX intentionally excluded (only for feature_deep_dive)
+STRATEGIC_SECTIONS = [
+    ("🚀 Launches",   "recent_launches"),
+    ("🎯 Use Cases",  "use_cases"),
+    ("⚙️ Technical",  "technical_details"),
+    ("💰 Pricing",    "pricing_signals"),
+    ("🧭 Direction",  "strategic_direction"),
+    ("⚔️ Gaps",       "gap_vs_your_product"),
+    ("👁️ Watch",      "watch_points"),
 ]
 
-# Phrases the LLM emits when a section is not relevant — treated as empty
-_IRRELEVANT_PHRASES = (
-    "not directly relevant",
+_IRRELEVANT_MARKERS = [
+    "not directly relevant to this research focus",
     "not found in available sources",
-    "not available",
-    "no data",
-    "n/a",
-)
+    "not applicable",
+    "not relevant to this research",
+]
 
 
-def _is_content_relevant(content: str) -> bool:
-    """Return True only if this section has real, substantive content."""
-    if not content:
+def _section_has_content(text: str) -> bool:
+    """True only if section has substantive, research-relevant content."""
+    if not text or len(text.strip()) < 100:
         return False
-    stripped = content.strip()
-    if not stripped or len(stripped) < 40:
-        return False
-    lower = stripped.lower()
-    for phrase in _IRRELEVANT_PHRASES:
-        if lower.startswith(phrase):
+    lower = text.lower().strip()
+    for marker in _IRRELEVANT_MARKERS:
+        if lower.startswith(marker) or lower[:200].count(marker) > 0:
             return False
     return True
 
 
 def render():
     st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
     st.markdown("## Intelligence Evaluation")
     st.markdown(
         "<p style='color:#64748b;margin-top:-8px;font-size:14px'>"
@@ -177,29 +76,26 @@ def render():
         st.warning("No competitors configured yet. Go to **Configure Competitors** to add some.")
         return
 
-    # ── Research Query ─────────────────────────────────────────────────────────
+    # ── Research Question ──────────────────────────────────────────────────────
     st.markdown("<div class='section-header'>Research Question</div>", unsafe_allow_html=True)
-
     research_query = st.text_area(
         "Research Focus",
         placeholder=(
             "Ask anything — e.g.\n"
-            "• 'What is the Export User Created Columns feature and how does Okta Workflows fit in?'\n"
+            "• 'Perform an in-depth SWOT analysis for Okta Workflows from a workforce implementation perspective'\n"
+            "• 'What are the key differentiating features in Okta Workflows vs PingOne DaVinci?'\n"
             "• 'What did Okta ship in the last 90 days?'\n"
-            "• 'How does Okta approach enterprise identity vs our product?'\n"
             "• 'Where are we ahead and behind Okta — give me a battle card.'"
         ),
         height=110,
         label_visibility="collapsed",
     )
 
-    # ── Analysis Mode Selector ─────────────────────────────────────────────────
+    # ── Analysis Mode ──────────────────────────────────────────────────────────
     st.markdown("<div class='section-header'>Analysis Mode</div>", unsafe_allow_html=True)
-
     st.markdown(
         "<p style='font-size:13px;color:#64748b;margin:-8px 0 12px 0'>"
-        "Auto-detect reads your question and picks the right mode. "
-        "Or select manually to override.</p>",
+        "Auto-detect reads your question and picks the right mode. Or select manually to override.</p>",
         unsafe_allow_html=True
     )
 
@@ -207,25 +103,22 @@ def render():
         st.session_state["selected_mode"] = "auto"
 
     cols = st.columns(5)
-
     modes_with_auto = [("auto", "🤖", "Auto-Detect", "Let AI pick the best mode")] + [
-        (mode_id, MODE_META[mode_id]["icon"], MODE_META[mode_id]["label"], MODE_META[mode_id]["description"])
-        for mode_id in MODE_ORDER
+        (m, MODE_META[m]["icon"], MODE_META[m]["label"], MODE_META[m]["description"])
+        for m in MODE_ORDER
     ]
-
     for i, (mode_id, icon, label, desc) in enumerate(modes_with_auto):
         with cols[i]:
             is_active = st.session_state["selected_mode"] == mode_id
             border = "2px solid #1a56db" if is_active else "1.5px solid #e2ddd6"
             bg = "#eff6ff" if is_active else "#ffffff"
-            text_color = "#1a56db" if is_active else "#475569"
-            weight = "700" if is_active else "500"
-
+            tc = "#1a56db" if is_active else "#475569"
+            fw = "700" if is_active else "500"
             st.markdown(
                 f"<div style='background:{bg};border:{border};border-radius:12px;"
                 f"padding:12px 14px;text-align:center;margin-bottom:4px'>"
                 f"<div style='font-size:20px;margin-bottom:4px'>{icon}</div>"
-                f"<div style='font-size:12px;font-weight:{weight};color:{text_color}'>{label}</div>"
+                f"<div style='font-size:12px;font-weight:{fw};color:{tc}'>{label}</div>"
                 f"<div style='font-size:10px;color:#94a3b8;margin-top:3px;line-height:1.3'>{desc}</div>"
                 f"</div>",
                 unsafe_allow_html=True
@@ -243,20 +136,33 @@ def render():
         "Vendors", options=vendor_names, default=vendor_names, label_visibility="collapsed"
     )
 
-    # ── Report Persistence ─────────────────────────────────────────────────────
-    st.markdown("<div class='section-header'>Report Persistence</div>", unsafe_allow_html=True)
-    col_drive, col_info = st.columns([2, 3])
-    with col_drive:
+    # ── Data Sources ───────────────────────────────────────────────────────────
+    st.markdown("<div class='section-header'>Data Sources</div>", unsafe_allow_html=True)
+    col_persist, col_scrapbook = st.columns(2)
+
+    with col_persist:
         save_to_drive = st.checkbox(
             "📤  Publish & Archive Report", value=False,
             help="Saves to Report History and uploads to Google Drive."
         )
-    with col_info:
         if save_to_drive:
             st.markdown("<div class='save-pill'>✦ Will be archived to History & Google Drive</div>",
                         unsafe_allow_html=True)
         else:
             st.markdown("<div class='nosave-pill'>⚡ Live analysis only — not saved</div>",
+                        unsafe_allow_html=True)
+
+    with col_scrapbook:
+        use_scrapbook = st.checkbox(
+            "📄  Include Google Doc Scrapbook", value=False,
+            help="Read your personal competitor notes and screenshots from Google Drive. "
+                 "Requires Google OAuth configured."
+        )
+        if use_scrapbook:
+            st.markdown("<div class='scrapbook-on'>📄 Scrapbook notes & images will be included</div>",
+                        unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='scrapbook-off'>📄 Scrapbook skipped — web sources only</div>",
                         unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
@@ -271,11 +177,12 @@ def render():
         if not research_query.strip():
             st.warning("Please enter a research question before running.")
             return
+        if "agent_result" in st.session_state:
+            del st.session_state["agent_result"]
 
         selected_mode = st.session_state.get("selected_mode", "auto")
         user_mode = "" if selected_mode == "auto" else selected_mode
-
-        _run_with_progress(selected_vendors, research_query, save_to_drive, user_mode)
+        _run_with_progress(selected_vendors, research_query, save_to_drive, use_scrapbook, user_mode)
 
     if "agent_result" in st.session_state:
         _render_results(st.session_state["agent_result"])
@@ -283,18 +190,16 @@ def render():
 
 # ── Pipeline runner ────────────────────────────────────────────────────────────
 
-def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mode=""):
+def _run_with_progress(selected_vendors, research_query, save_to_drive, use_scrapbook, user_mode=""):
     from agent.graph import stream_agent, PIPELINE_STEPS, STEP_LABELS
 
     total_steps = len(PIPELINE_STEPS)
-
     prog_col, pct_col = st.columns([11, 1])
     with prog_col:
         progress_bar = st.progress(0)
     with pct_col:
         pct_text = st.empty()
-
-    status_text  = st.empty()
+    status_text = st.empty()
     live_preview = st.empty()
 
     pct_text.markdown(
@@ -311,6 +216,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
         for node_name, partial_state in stream_agent(
             selected_vendors, research_query,
             save_to_drive=save_to_drive,
+            use_scrapbook=use_scrapbook,
             analysis_mode=user_mode,
         ):
             if node_name == "__end__":
@@ -328,18 +234,17 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
             )
 
             icon, label = STEP_LABELS.get(node_name, ("⚙️", node_name))
-
             extra = ""
             if node_name == "intent_classifier":
                 detected_mode = partial_state.get("analysis_mode", "strategic")
                 mode_info = MODE_META.get(detected_mode, {})
                 is_auto = partial_state.get("mode_confidence") == "auto"
-                badge = (
-                    " <span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;"
-                    "letter-spacing:0.05em;text-transform:uppercase;border-radius:8px;padding:2px 8px'>"
-                    "AUTO-DETECTED</span>"
-                ) if is_auto else ""
+                badge = (" <span style='background:#dbeafe;color:#1d4ed8;font-size:10px;font-weight:700;"
+                         "letter-spacing:0.05em;text-transform:uppercase;border-radius:8px;padding:2px 8px'>"
+                         "AUTO-DETECTED</span>") if is_auto else ""
                 extra = f" → {mode_info.get('icon','')} <b>{mode_info.get('label','')}</b>{badge}"
+            elif node_name == "gdoc_reader" and not use_scrapbook:
+                label = "Scrapbook skipped (disabled)"
 
             status_text.markdown(
                 f"<p style='color:#64748b;font-size:13px;font-weight:500'>"
@@ -353,7 +258,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
                 preview_lines = []
                 for s in syntheses:
                     vendor = s.get("vendor_name", "")
-                    preview_text = (s.get("direct_answer") or s.get("recent_launches") or "")[:280]
+                    preview_text = (s.get("direct_answer") or s.get("recent_launches") or "")[:300]
                     if preview_text:
                         preview_lines.append(
                             f"<div style='margin-bottom:12px'>"
@@ -380,12 +285,10 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
             unsafe_allow_html=True
         )
         status_text.markdown(
-            "<p style='color:#15803d;font-size:13px;font-weight:700'>"
-            "✓&nbsp; Evaluation complete</p>",
+            "<p style='color:#15803d;font-size:13px;font-weight:700'>✓&nbsp; Evaluation complete</p>",
             unsafe_allow_html=True
         )
         time.sleep(0.8)
-
         progress_bar.empty()
         pct_text.empty()
         status_text.empty()
@@ -406,7 +309,7 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, user_mod
         st.error(f"Evaluation failed: {str(e)}")
 
 
-# ── Results rendering — routes per mode ───────────────────────────────────────
+# ── Results ────────────────────────────────────────────────────────────────────
 
 def _render_results(result: dict):
     st.divider()
@@ -415,7 +318,6 @@ def _render_results(result: dict):
     mode_info = MODE_META.get(analysis_mode, {})
     mode_confidence = result.get("mode_confidence", "auto")
     research_query = result.get("research_query", "")
-    syntheses = result.get("syntheses", [])
 
     auto_badge = (
         "<span class='mode-auto-badge'>AUTO-DETECTED</span>"
@@ -423,9 +325,8 @@ def _render_results(result: dict):
         "<span class='mode-auto-badge' style='background:#fef9c3;color:#854d0e'>MANUAL</span>"
     )
     st.markdown(
-        f"<div class='mode-banner'>"
-        f"{mode_info.get('icon','')} {mode_info.get('label','Analysis')} {auto_badge}"
-        f"</div>",
+        f"<div class='mode-banner'>{mode_info.get('icon','')} "
+        f"{mode_info.get('label','Analysis')} {auto_badge}</div>",
         unsafe_allow_html=True
     )
 
@@ -446,7 +347,6 @@ def _render_results(result: dict):
     }.get(analysis_mode, _render_strategic)
 
     renderer(result)
-
     _render_timing(result)
 
     if result.get("errors"):
@@ -470,6 +370,27 @@ def _render_results(result: dict):
 
 # ── Per-mode renderers ─────────────────────────────────────────────────────────
 
+def _render_reference_links(synthesis: dict):
+    """Render source reference links for a vendor."""
+    urls = synthesis.get("source_urls", [])
+    if not urls:
+        return
+    st.markdown(
+        "<div class='ref-links-box'>"
+        "<div class='ref-links-label'>📎 Reference Sources</div>",
+        unsafe_allow_html=True
+    )
+    for url in urls:
+        if url.startswith("http"):
+            # Try to show a clean label
+            label = url.split("//")[-1].split("/")[0]
+            st.markdown(f"- [{label}]({url})")
+        else:
+            # Already a markdown link like [title](url)
+            st.markdown(f"- {url}")
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
 def _render_feature_deep_dive(result: dict):
     syntheses = result.get("syntheses", [])
 
@@ -490,18 +411,22 @@ def _render_feature_deep_dive(result: dict):
         with st.expander(f"  {s['vendor_name']} — Full Feature Breakdown", expanded=True):
             st.markdown("#### What This Feature Does")
             st.markdown(s.get("recent_launches", "_No data retrieved_"))
-
             st.markdown("#### Who It's Built For")
             st.markdown(s.get("use_cases", "_No data retrieved_"))
-
             st.markdown("#### How It Fits Into Their Product Strategy")
             st.markdown(s.get("strategic_direction", "_No data retrieved_"))
-
             st.markdown("#### How It Compares to Our Product")
             st.markdown(s.get("gap_vs_your_product", "_No data retrieved_"))
-
             st.markdown("#### Watch Points")
             st.markdown(s.get("watch_points", "_No data retrieved_"))
+
+            # UI/UX screenshots — only in feature deep dive
+            ui_ux = s.get("ui_ux", "").strip()
+            if ui_ux and _section_has_content(ui_ux):
+                st.markdown("#### UI/UX Screenshots & Observations")
+                st.markdown(ui_ux)
+
+            _render_reference_links(s)
 
 
 def _render_landscape_scan(result: dict):
@@ -523,6 +448,7 @@ def _render_landscape_scan(result: dict):
     for s in syntheses:
         with st.expander(f"  {s['vendor_name']}", expanded=True):
             st.markdown(s.get("recent_launches", "_No data retrieved_"))
+            _render_reference_links(s)
 
     st.markdown("<div class='section-header'>Signals & Themes</div>", unsafe_allow_html=True)
     for s in syntheses:
@@ -533,9 +459,15 @@ def _render_landscape_scan(result: dict):
 
 
 def _render_strategic(result: dict):
+    """
+    Strategic mode:
+    - Direct Answer is the primary deliverable — shown in full, no truncation
+    - Supporting sections shown only if they have real relevant content
+    - No UI/UX tab (that's only for feature deep dive)
+    """
     syntheses = result.get("syntheses", [])
 
-    # Direct answers — always shown first and prominently
+    # Direct Answer — full depth, primary deliverable
     has_direct = any(s.get("direct_answer") for s in syntheses)
     if has_direct:
         st.markdown("<div class='section-header'>Direct Answer to Your Research Question</div>",
@@ -551,38 +483,27 @@ def _render_strategic(result: dict):
                     unsafe_allow_html=True
                 )
 
-    # Supporting details — only show tabs that have relevant content
-    st.markdown("<div class='section-header'>Supporting Intelligence</div>",
-                unsafe_allow_html=True)
-
+    # Supporting sections — only tabs with real content, no UI/UX
     for s in syntheses:
-        # Filter to only sections with real content
         relevant = [
-            (key, label)
-            for key, label in STRATEGIC_SECTION_DEFS
-            if _is_content_relevant(s.get(key, ""))
+            (label, key) for label, key in STRATEGIC_SECTIONS
+            if _section_has_content(s.get(key, ""))
         ]
 
-        if not relevant:
-            st.info(f"No additional supporting data found for {s['vendor_name']}.")
-            continue
-
-        with st.expander(
-            f"  {s['vendor_name']} — {len(relevant)} relevant section(s)",
-            expanded=True
-        ):
-            if len(relevant) == 1:
-                # Single section — no tab chrome needed
-                key, label = relevant[0]
-                st.markdown(f"#### {label}")
-                st.markdown(s.get(key, "_No data_"))
-            else:
-                # Only render the tabs that have content
-                tab_labels = [label for _, label in relevant]
-                tabs = st.tabs(tab_labels)
-                for tab, (key, _) in zip(tabs, relevant):
-                    with tab:
-                        st.markdown(s.get(key, "_No data_"))
+        if relevant:
+            st.markdown("<div class='section-header'>Supporting Intelligence</div>",
+                        unsafe_allow_html=True)
+            with st.expander(f"  {s['vendor_name']} — {len(relevant)} relevant section(s)", expanded=False):
+                if len(relevant) == 1:
+                    label, key = relevant[0]
+                    st.markdown(f"**{label}**")
+                    st.markdown(s.get(key, ""))
+                else:
+                    tabs = st.tabs([label for label, _ in relevant])
+                    for tab, (_, key) in zip(tabs, relevant):
+                        with tab:
+                            st.markdown(s.get(key, ""))
+                _render_reference_links(s)
 
 
 def _render_battle_card(result: dict):
@@ -603,22 +524,11 @@ def _render_battle_card(result: dict):
 
         col1, col2 = st.columns(2)
         with col1:
-            st.markdown(
-                "<div class='battle-cell green'>"
-                "<div class='battle-cell-label' style='color:#16a34a'>✅ Their Strengths</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**✅ Their Strengths**")
             st.markdown(s.get("recent_launches", "_No data_"))
-            st.markdown("</div>", unsafe_allow_html=True)
-
         with col2:
-            st.markdown(
-                "<div class='battle-cell red'>"
-                "<div class='battle-cell-label' style='color:#dc2626'>❌ Their Weaknesses</div>",
-                unsafe_allow_html=True
-            )
+            st.markdown("**❌ Their Weaknesses**")
             st.markdown(s.get("gap_vs_your_product", "_No data_"))
-            st.markdown("</div>", unsafe_allow_html=True)
 
         st.markdown("**🏆 Where We Win**")
         st.markdown(s.get("strategic_direction", "_No data_"))
@@ -630,12 +540,13 @@ def _render_battle_card(result: dict):
             st.markdown(s.get("pricing_signals", "_No data_"))
 
         positioning = s.get("watch_points", "").strip()
-        if positioning:
+        if positioning and _section_has_content(positioning):
             st.markdown(
                 f"<div class='positioning-statement'>&ldquo;{positioning}&rdquo;</div>",
                 unsafe_allow_html=True
             )
 
+        _render_reference_links(s)
         st.divider()
 
 
@@ -647,8 +558,7 @@ def _render_timing(result: dict):
     save_to_drive = result.get("save_to_drive", False)
     syntheses = result.get("syntheses", [])
 
-    st.markdown("<div class='section-header'>Evaluation Performance</div>",
-                unsafe_allow_html=True)
+    st.markdown("<div class='section-header'>Evaluation Performance</div>", unsafe_allow_html=True)
 
     if save_to_drive and drive_secs > 0:
         c1, c2, c3 = st.columns(3)
