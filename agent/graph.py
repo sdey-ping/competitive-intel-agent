@@ -1,6 +1,7 @@
 from langgraph.graph import StateGraph, END
 from agent.state import AgentState
 from agent.nodes.intent_classifier import intent_classifier_node
+from agent.nodes.home_company_scraper import home_company_scraper_node
 from agent.nodes.web_scraper import web_scraper_node
 from agent.nodes.youtube_scraper import youtube_scraper_node
 from agent.nodes.gdoc_reader import gdoc_reader_node
@@ -11,6 +12,7 @@ from agent.nodes.report_writer import report_writer_node
 
 PIPELINE_STEPS = [
     "intent_classifier",
+    "home_company_scraper",
     "web_scraper",
     "youtube_scraper",
     "gdoc_reader",
@@ -20,33 +22,36 @@ PIPELINE_STEPS = [
 ]
 
 STEP_LABELS = {
-    "intent_classifier": ("🎯", "Classifying research intent"),
-    "web_scraper":        ("🌐", "Scraping websites, blogs, docs & changelogs"),
-    "youtube_scraper":    ("🎬", "Fetching YouTube transcripts"),
-    "gdoc_reader":        ("📄", "Reading scrapbook notes and images"),
-    "synthesizer":        ("🧠", "GPT-4o synthesizing intelligence per vendor"),
-    "diff_engine":        ("🔄", "Computing delta vs previous run"),
-    "report_writer":      ("📝", "Compiling and archiving final report"),
+    "intent_classifier":    ("🎯", "Classifying research intent"),
+    "home_company_scraper": ("🏠", "Refreshing your product context"),
+    "web_scraper":          ("🌐", "Scraping websites, blogs, docs & changelogs"),
+    "youtube_scraper":      ("🎬", "Fetching YouTube transcripts"),
+    "gdoc_reader":          ("📄", "Reading scrapbook notes and images"),
+    "synthesizer":          ("🧠", "GPT-4o synthesizing intelligence per vendor"),
+    "diff_engine":          ("🔄", "Computing delta vs previous run"),
+    "report_writer":        ("📝", "Compiling and archiving final report"),
 }
 
 
 def build_graph() -> StateGraph:
     graph = StateGraph(AgentState)
-    graph.add_node("intent_classifier", intent_classifier_node)
-    graph.add_node("web_scraper",        web_scraper_node)
-    graph.add_node("youtube_scraper",    youtube_scraper_node)
-    graph.add_node("gdoc_reader",        gdoc_reader_node)
-    graph.add_node("synthesizer",        synthesizer_node)
-    graph.add_node("diff_engine",        diff_engine_node)
-    graph.add_node("report_writer",      report_writer_node)
+    graph.add_node("intent_classifier",    intent_classifier_node)
+    graph.add_node("home_company_scraper", home_company_scraper_node)
+    graph.add_node("web_scraper",          web_scraper_node)
+    graph.add_node("youtube_scraper",      youtube_scraper_node)
+    graph.add_node("gdoc_reader",          gdoc_reader_node)
+    graph.add_node("synthesizer",          synthesizer_node)
+    graph.add_node("diff_engine",          diff_engine_node)
+    graph.add_node("report_writer",        report_writer_node)
     graph.set_entry_point("intent_classifier")
-    graph.add_edge("intent_classifier", "web_scraper")
-    graph.add_edge("web_scraper",        "youtube_scraper")
-    graph.add_edge("youtube_scraper",    "gdoc_reader")
-    graph.add_edge("gdoc_reader",        "synthesizer")
-    graph.add_edge("synthesizer",        "diff_engine")
-    graph.add_edge("diff_engine",        "report_writer")
-    graph.add_edge("report_writer",      END)
+    graph.add_edge("intent_classifier",    "home_company_scraper")
+    graph.add_edge("home_company_scraper", "web_scraper")
+    graph.add_edge("web_scraper",          "youtube_scraper")
+    graph.add_edge("youtube_scraper",      "gdoc_reader")
+    graph.add_edge("gdoc_reader",          "synthesizer")
+    graph.add_edge("synthesizer",          "diff_engine")
+    graph.add_edge("diff_engine",          "report_writer")
+    graph.add_edge("report_writer",        END)
     return graph.compile()
 
 
@@ -85,6 +90,7 @@ def _make_initial_state(vendors, research_query, save_to_drive,
         "analysis_mode": analysis_mode or "strategic",
         "target_feature": target_feature,
         "mode_confidence": mode_confidence,
+        "home_company_content": "",
         "raw_data": [],
         "syntheses": [],
         "diffs": [],

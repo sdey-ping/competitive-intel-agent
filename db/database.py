@@ -55,6 +55,14 @@ def init_db():
         )
     """)
 
+    c.execute("""
+        CREATE TABLE IF NOT EXISTS home_company_context (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            content TEXT NOT NULL,
+            scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
 
     # ── Migrate reports table if old schema has NOT NULL on run_date ───────────
@@ -323,5 +331,39 @@ def save_diff_log(report_id, vendor_name, previous_snapshot, new_snapshot, delta
         INSERT INTO diff_log (report_id, vendor_name, previous_snapshot, new_snapshot, delta_summary)
         VALUES (?, ?, ?, ?, ?)
     """, (report_id, vendor_name, previous_snapshot, new_snapshot, delta_summary))
+    conn.commit()
+    conn.close()
+
+
+# ── Home company context cache ─────────────────────────────────────────────────
+
+HOME_COMPANY_CACHE_TTL_HOURS = 24
+
+
+def get_home_company_context() -> str | None:
+    """Return cached content if it was scraped within the TTL, else None."""
+    conn = get_connection()
+    row = conn.execute("""
+        SELECT content, scraped_at FROM home_company_context
+        ORDER BY scraped_at DESC LIMIT 1
+    """).fetchone()
+    conn.close()
+    if not row:
+        return None
+    scraped_at = datetime.strptime(row["scraped_at"], "%Y-%m-%d %H:%M:%S")
+    age_hours = (datetime.now() - scraped_at).total_seconds() / 3600
+    if age_hours > HOME_COMPANY_CACHE_TTL_HOURS:
+        return None
+    return row["content"]
+
+
+def save_home_company_context(content: str):
+    """Overwrite the cache with freshly scraped content."""
+    conn = get_connection()
+    conn.execute("DELETE FROM home_company_context")
+    conn.execute(
+        "INSERT INTO home_company_context (content, scraped_at) VALUES (?, ?)",
+        (content, datetime.now().strftime("%Y-%m-%d %H:%M:%S")),
+    )
     conn.commit()
     conn.close()

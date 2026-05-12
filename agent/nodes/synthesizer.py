@@ -1,3 +1,5 @@
+import json
+import os
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState, CompetitorSynthesis
@@ -5,7 +7,11 @@ from config.settings import OPENAI_API_KEY, OPENAI_MODEL
 
 llm = ChatOpenAI(model=OPENAI_MODEL, api_key=OPENAI_API_KEY, temperature=0.2)
 
-SYSTEM_PROMPT = """You are a senior competitive intelligence analyst for a B2B SaaS product team.
+YOUR_COMPANY_FILE = os.path.join(
+    os.path.dirname(__file__), "..", "..", "config", "your_company.json"
+)
+
+BASE_SYSTEM_PROMPT = """You are a senior competitive intelligence analyst for a B2B SaaS product team.
 Your job is to produce deep, technically detailed, research-specific analysis — never surface-level summaries.
 
 Rules:
@@ -21,7 +27,23 @@ Rules:
 - Prioritize content from the last 90 days when dates are available.
 - The Direct Answer section must fully answer the research question — not just 2 sentences.
   If the question requires a SWOT, the Direct Answer IS the full SWOT. If it requires a comparison,
-  the Direct Answer IS the full comparison. Match length to complexity."""
+  the Direct Answer IS the full comparison. Match length to complexity.
+- When comparing to "our product" or "your product", use ONLY the content provided in the
+  YOUR PRODUCT section of the prompt. Do not invent capabilities we may or may not have."""
+
+
+def _build_system_prompt() -> str:
+    """Load company name from config and inject it so GPT knows who 'we' are."""
+    try:
+        path = os.path.abspath(YOUR_COMPANY_FILE)
+        with open(path) as f:
+            config = json.load(f)
+        company_name = config.get("company_name", "")
+        if company_name:
+            return BASE_SYSTEM_PROMPT + f"\n\nYou work for {company_name}. When the prompt refers to 'our product', 'your product', or 'we', it means {company_name}."
+    except Exception:
+        pass
+    return BASE_SYSTEM_PROMPT
 
 
 # ── MODE 1: Feature Deep Dive ──────────────────────────────────────────────────
@@ -30,6 +52,9 @@ FEATURE_DEEP_DIVE_PROMPT = """
 Competitor: {vendor_name}
 Research Question: {research_query}
 Feature in Focus: {target_feature}
+
+=== YOUR PRODUCT (for comparison) ===
+{home_company_content}
 
 === WEBSITE & BLOG CONTENT ===
 {web_content}
@@ -93,6 +118,9 @@ LANDSCAPE_SCAN_PROMPT = """
 Competitor: {vendor_name}
 Research Question: {research_query}
 
+=== YOUR PRODUCT (for comparison) ===
+{home_company_content}
+
 === WEBSITE & BLOG CONTENT ===
 {web_content}
 
@@ -139,6 +167,9 @@ RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
 STRATEGIC_PROMPT = """
 Competitor: {vendor_name}
 Research Focus: {research_query}
+
+=== YOUR PRODUCT (for comparison) ===
+{home_company_content}
 
 === WEBSITE & BLOG CONTENT ===
 {web_content}
@@ -223,6 +254,9 @@ RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
 BATTLE_CARD_PROMPT = """
 Competitor: {vendor_name}
 Research Question: {research_query}
+
+=== YOUR PRODUCT (for comparison) ===
+{home_company_content}
 
 === WEBSITE & BLOG CONTENT ===
 {web_content}
@@ -337,8 +371,10 @@ def synthesizer_node(state: AgentState) -> AgentState:
     research_query = state.get("research_query", "General competitive overview")
     analysis_mode = state.get("analysis_mode", "strategic")
     target_feature = state.get("target_feature", "")
+    home_company_content = state.get("home_company_content", "") or "Not available."
     syntheses: list = []
     errors = state.get("errors", [])
+    system_prompt = _build_system_prompt()
 
     prompt_template = PROMPT_TEMPLATES.get(analysis_mode, STRATEGIC_PROMPT)
     sections_to_extract = SECTIONS_BY_MODE.get(analysis_mode, SECTIONS_BY_MODE["strategic"])
@@ -371,6 +407,7 @@ def synthesizer_node(state: AgentState) -> AgentState:
                 vendor_name=vendor_name,
                 research_query=research_query,
                 target_feature=target_feature or research_query,
+                home_company_content=home_company_content[:20000],
                 web_content=item.get("web_content", "Not available")[:40000],
                 docs_content=item.get("docs_content", "Not available")[:40000],
                 youtube_content=item.get("youtube_content", "Not available")[:10000],
@@ -379,7 +416,7 @@ def synthesizer_node(state: AgentState) -> AgentState:
             )
 
             human_msg = _build_multimodal_message(prompt, scrapbook_images)
-            response = llm.invoke([SystemMessage(content=SYSTEM_PROMPT), human_msg])
+            response = llm.invoke([SystemMessage(content=system_prompt), human_msg])
             raw_synthesis = response.content
 
             synthesis: dict = {

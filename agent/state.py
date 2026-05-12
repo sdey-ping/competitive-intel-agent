@@ -45,6 +45,9 @@ class AgentState(TypedDict):
     target_feature: str
     mode_confidence: str
 
+    # ── Home company context ──────────────────
+    home_company_content: str
+
     # ── Intermediate ──────────────────────────
     raw_data: List[CompetitorRawData]
     syntheses: List[CompetitorSynthesis]
