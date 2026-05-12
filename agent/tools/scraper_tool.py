@@ -41,6 +41,9 @@ MAX_CHARS_PER_PAGE = 4000   # truncate each page to keep GPT context manageable
 MIN_CONTENT_SCORE  = 2      # min query-word hits required to keep a page
 REQUEST_TIMEOUT    = 12     # seconds per HTTP request
 CRAWL_DELAY        = 0.25   # seconds between requests
+JINA_PREFIX        = "https://r.jina.ai/"
+JINA_TIMEOUT       = 30     # Jina renders JS server-side — needs more time
+SPA_SHELL_THRESHOLD = 200   # chars below which we treat a page as an unrendered SPA shell
 
 # URL path segments that signal high-value product content — prioritized in BFS
 HIGH_VALUE_PATTERNS = [
@@ -124,6 +127,33 @@ def _serper_search(vendor_name: str, research_query: str, domain: str) -> list[s
         return []
 
 
+# ── SPA detection & Jina fallback ────────────────────────────────────────────
+
+def _is_spa_shell(text: str) -> bool:
+    """True if extracted text is too thin to be real content — likely an unrendered JS app."""
+    return len(text.strip()) < SPA_SHELL_THRESHOLD
+
+
+def _fetch_via_jina(url: str) -> tuple[str, str]:
+    """
+    Fallback fetch via Jina Reader (r.jina.ai). Renders JS server-side and returns
+    clean Markdown text. Does not return internal links — BFS link discovery is lost
+    for this page, but Serper seeds cover the most important pages anyway.
+    """
+    try:
+        jina_url = JINA_PREFIX + url
+        resp = requests.get(
+            jina_url,
+            headers={"Accept": "text/plain", "User-Agent": HEADERS["User-Agent"]},
+            timeout=JINA_TIMEOUT,
+        )
+        resp.raise_for_status()
+        text = resp.text.strip()[:MAX_CHARS_PER_PAGE]
+        return url, text
+    except Exception as e:
+        return url, f"[Jina fetch error: {str(e)}]"
+
+
 # ── Page fetcher ──────────────────────────────────────────────────────────────
 
 def _fetch_page(url: str) -> tuple[str, str, list[str]]:
@@ -169,6 +199,10 @@ def _fetch_page(url: str) -> tuple[str, str, list[str]]:
         text = soup.get_text(separator="\n", strip=True)
         lines = [l.strip() for l in text.splitlines() if len(l.strip()) > 40]
         clean = "\n".join(lines)[:MAX_CHARS_PER_PAGE]
+
+        if _is_spa_shell(clean):
+            _, jina_text = _fetch_via_jina(url)
+            return title, jina_text, []
 
         return title, clean, list(dict.fromkeys(raw_links))
 
