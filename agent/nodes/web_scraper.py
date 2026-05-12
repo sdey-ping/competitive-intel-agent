@@ -3,6 +3,17 @@ from agent.tools.scraper_tool import scrape_for_vendor
 from db.database import get_competitor_by_name
 
 
+def _split_urls(raw: list[str]) -> list[str]:
+    """Split comma-separated URL strings and return a flat, clean list."""
+    urls = []
+    for entry in raw:
+        for u in entry.split(","):
+            u = u.strip()
+            if u:
+                urls.append(u)
+    return urls
+
+
 def web_scraper_node(state: AgentState) -> AgentState:
     vendors        = state["vendors"]
     research_query = state.get("research_query", "")
@@ -16,15 +27,15 @@ def web_scraper_node(state: AgentState) -> AgentState:
             errors.append(f"Vendor '{vendor_name}' not found in database.")
             continue
 
-        marketing_urls = [u for u in [
+        marketing_urls = _split_urls([
             competitor.get("website_url", ""),
             competitor.get("blog_url", ""),
-        ] if u]
+        ])
 
-        technical_urls = [u for u in [
+        technical_urls = _split_urls([
             competitor.get("docs_url", ""),
             competitor.get("changelog_url", ""),
-        ] if u]
+        ])
 
         # Query-aware scrape: Serper finds relevant deep pages, then we crawl them
         result = scrape_for_vendor(

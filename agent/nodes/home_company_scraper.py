@@ -4,6 +4,17 @@ from agent.state import AgentState
 from agent.tools.scraper_tool import scrape_for_vendor
 from db.database import get_home_company_context, save_home_company_context
 
+
+def _split_urls(raw: list[str]) -> list[str]:
+    """Split comma-separated URL strings and return a flat, clean list."""
+    urls = []
+    for entry in raw:
+        for u in entry.split(","):
+            u = u.strip()
+            if u:
+                urls.append(u)
+    return urls
+
 YOUR_COMPANY_FILE = os.path.join(
     os.path.dirname(__file__), "..", "..", "config", "your_company.json"
 )
@@ -46,15 +57,15 @@ def home_company_scraper_node(state: AgentState) -> AgentState:
     company_name = config.get("company_name", "Our Company")
     research_query = state.get("research_query", "product capabilities and recent updates")
 
-    marketing_urls = [u for u in [
+    marketing_urls = _split_urls([
         config.get("website_url", ""),
         config.get("blog_url", ""),
-    ] if u]
+    ])
 
-    technical_urls = [u for u in [
+    technical_urls = _split_urls([
         config.get("docs_url", ""),
         config.get("changelog_url", ""),
-    ] if u]
+    ])
 
     try:
         result = scrape_for_vendor(
