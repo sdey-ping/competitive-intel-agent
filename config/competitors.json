@@ -14,5 +14,13 @@
     "docs_url": "https://docs.descope.com/",
     "changelog_url": "https://www.descope.com/resources, https://www.descope.com/newsroom",
     "youtube_channel": "@descope"
+  },
+  {
+    "vendor_name": "Transmit Security",
+    "website_url": "https://transmitsecurity.com/",
+    "blog_url": "https://transmitsecurity.com/blog",
+    "docs_url": "https://developer.transmitsecurity.com/",
+    "changelog_url": "https://product.transmitsecurity.com/, https://developer.transmitsecurity.com/sdk-ref/platform/changelog",
+    "youtube_channel": "@descope"
   }
 ]

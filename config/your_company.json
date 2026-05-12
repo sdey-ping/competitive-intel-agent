@@ -1,7 +1,7 @@
 {
-  "company_name": "Ping Identity",
+  "company_name": "Ping One Multi Tenant Platform",
   "website_url": "https://www.pingidentity.com",
   "blog_url": "https://www.pingidentity.com/en/resources/blog.html",
   "docs_url": "https://docs.pingidentity.com",
-  "changelog_url": "https://www.pingidentity.com/en/resources/blog/product-updates.html"
+  "changelog_url": "https://www.pingidentity.com/en/resources/blog/product-updates.html, https://docs.pingidentity.com/pingone/release_notes/, https://docs.pingidentity.com/davinci/release_notes/davinci_release_notes.html"
 }
