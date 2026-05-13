@@ -35,61 +35,65 @@ Keep it under 200 words. Be specific, not generic.
 """
 
 
-def diff_engine_node(state: AgentState) -> AgentState:
-    """
-    Compare new syntheses against previous stored snapshots.
-    Highlights only what is new/changed since last run, filtered by research query.
-    """
-    syntheses = state.get("syntheses", [])
-    research_query = state.get("research_query", "")
-    diffs: list[DiffResult] = []
-    errors = state.get("errors", [])
+def _diff_one(synthesis: dict, research_query: str) -> tuple:
+    """Diff a single vendor synthesis against its last snapshot. Returns (diff_dict, error_str|None)."""
+    vendor_name       = synthesis["vendor_name"]
+    current_synthesis = synthesis["raw_synthesis"]
+    last              = get_last_report_for_vendor(vendor_name)
 
-    for synthesis in syntheses:
-        vendor_name = synthesis["vendor_name"]
-        current_synthesis = synthesis["raw_synthesis"]
-
-        last = get_last_report_for_vendor(vendor_name)
-
-        if not last:
-            diffs.append({
-                "vendor_name": vendor_name,
+    if not last:
+        return {"vendor_name": vendor_name,
                 "delta_summary": "📋 First run for this vendor — no previous snapshot to compare against.",
-                "is_first_run": True,
-            })
-            continue
+                "is_first_run": True}, None
 
-        try:
-            prompt = DIFF_PROMPT.format(
-                vendor_name=vendor_name,
-                research_query=research_query,
-                prev_date=last.get("created_at", "unknown date"),
-                previous=last.get("new_snapshot", "")[:3000],
-                current=current_synthesis[:3000],
-            )
-
-            response = llm.invoke([
-                SystemMessage(content=DIFF_SYSTEM),
-                HumanMessage(content=prompt),
-            ])
-
-            diffs.append({
-                "vendor_name": vendor_name,
+    try:
+        prompt = DIFF_PROMPT.format(
+            vendor_name=vendor_name,
+            research_query=research_query,
+            prev_date=last.get("created_at", "unknown date"),
+            previous=last.get("new_snapshot", "")[:3000],
+            current=current_synthesis[:3000],
+        )
+        response = llm.invoke([
+            SystemMessage(content=DIFF_SYSTEM),
+            HumanMessage(content=prompt),
+        ])
+        return {"vendor_name": vendor_name,
                 "delta_summary": response.content,
-                "is_first_run": False,
-            })
+                "is_first_run": False}, None
 
-        except Exception as e:
-            errors.append(f"Diff failed for {vendor_name}: {str(e)}")
-            diffs.append({
-                "vendor_name": vendor_name,
+    except Exception as e:
+        return {"vendor_name": vendor_name,
                 "delta_summary": "[Diff computation failed]",
-                "is_first_run": False,
-            })
+                "is_first_run": False}, f"Diff failed for {vendor_name}: {str(e)}"
+
+
+def diff_engine_node(state: AgentState) -> AgentState:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    syntheses      = state.get("syntheses", [])
+    research_query = state.get("research_query", "")
+    errors         = list(state.get("errors", []))
+    results        = {}
+
+    with ThreadPoolExecutor(max_workers=len(syntheses)) as executor:
+        futures = {
+            executor.submit(_diff_one, s, research_query): s["vendor_name"]
+            for s in syntheses
+        }
+        for future in as_completed(futures):
+            vendor_name = futures[future]
+            diff, error = future.result()
+            if error:
+                errors.append(error)
+            results[vendor_name] = diff
+
+    # Preserve original vendor order
+    diffs = [results[s["vendor_name"]] for s in syntheses if s["vendor_name"] in results]
 
     return {
         **state,
-        "diffs": diffs,
-        "errors": errors,
+        "diffs":        diffs,
+        "errors":       errors,
         "current_step": "diff_complete",
     }

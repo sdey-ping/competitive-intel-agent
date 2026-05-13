@@ -366,96 +366,123 @@ def _build_multimodal_message(prompt_text: str, images_base64: list) -> HumanMes
     return HumanMessage(content=content_blocks)
 
 
-def synthesizer_node(state: AgentState) -> AgentState:
-    raw_data = state.get("raw_data", [])
-    research_query = state.get("research_query", "General competitive overview")
-    analysis_mode = state.get("analysis_mode", "strategic")
-    target_feature = state.get("target_feature", "")
-    home_company_content = state.get("home_company_content", "") or "Not available."
-    syntheses: list = []
-    errors = state.get("errors", [])
-    system_prompt = _build_system_prompt()
+def _synthesize_one(
+    item: dict,
+    research_query: str,
+    analysis_mode: str,
+    target_feature: str,
+    home_company_content: str,
+    prompt_template: str,
+    sections_to_extract: list,
+    system_prompt: str,
+) -> tuple:
+    """Synthesize a single vendor. Returns (synthesis_dict | None, error_str | None)."""
+    vendor_name      = item["vendor_name"]
+    scrapbook_images = item.get("scrapbook_images", [])
+    source_urls      = item.get("source_urls", [])
+    has_images       = len(scrapbook_images) > 0
 
-    prompt_template = PROMPT_TEMPLATES.get(analysis_mode, STRATEGIC_PROMPT)
-    sections_to_extract = SECTIONS_BY_MODE.get(analysis_mode, SECTIONS_BY_MODE["strategic"])
+    total_content = (
+        item.get("web_content", "") +
+        item.get("docs_content", "") +
+        item.get("youtube_content", "") +
+        item.get("scrapbook_content", "")
+    )
+    if not total_content.strip() and not has_images:
+        return None, f"No content retrieved for {vendor_name} — skipping synthesis."
 
-    for item in raw_data:
-        vendor_name = item["vendor_name"]
-        scrapbook_images = item.get("scrapbook_images", [])
-        source_urls = item.get("source_urls", [])
-
-        total_content = (
-            item.get("web_content", "") +
-            item.get("docs_content", "") +
-            item.get("youtube_content", "") +
-            item.get("scrapbook_content", "")
+    try:
+        image_note = (
+            f"\n=== SCRAPBOOK IMAGES ===\n"
+            f"{len(scrapbook_images)} image(s) attached below. Analyze every visible detail.\n"
+            if has_images else ""
         )
-        has_images = len(scrapbook_images) > 0
 
-        if not total_content.strip() and not has_images:
-            errors.append(f"No content retrieved for {vendor_name} — skipping synthesis.")
-            continue
+        prompt = prompt_template.format(
+            vendor_name=vendor_name,
+            research_query=research_query,
+            target_feature=target_feature or research_query,
+            home_company_content=home_company_content[:20000],
+            web_content=item.get("web_content", "Not available")[:40000],
+            docs_content=item.get("docs_content", "Not available")[:40000],
+            youtube_content=item.get("youtube_content", "Not available")[:10000],
+            scrapbook_content=item.get("scrapbook_content", "Not available")[:8000],
+            image_note=image_note,
+        )
 
-        try:
-            image_note = (
-                f"\n=== SCRAPBOOK IMAGES ===\n"
-                f"{len(scrapbook_images)} image(s) attached below. Analyze every visible detail.\n"
-                if has_images else ""
-            )
+        human_msg = _build_multimodal_message(prompt, scrapbook_images)
+        response = llm.invoke([SystemMessage(content=system_prompt), human_msg])
+        raw_synthesis = response.content
 
-            prompt = prompt_template.format(
-                vendor_name=vendor_name,
-                research_query=research_query,
-                target_feature=target_feature or research_query,
-                home_company_content=home_company_content[:20000],
-                web_content=item.get("web_content", "Not available")[:40000],
-                docs_content=item.get("docs_content", "Not available")[:40000],
-                youtube_content=item.get("youtube_content", "Not available")[:10000],
-                scrapbook_content=item.get("scrapbook_content", "Not available")[:8000],
-                image_note=image_note,
-            )
+        synthesis: dict = {
+            "vendor_name":        vendor_name,
+            "analysis_mode":      analysis_mode,
+            "raw_synthesis":      raw_synthesis,
+            "direct_answer":      "",
+            "recent_launches":    "",
+            "use_cases":          "",
+            "technical_details":  "",
+            "ui_ux":              "",
+            "pricing_signals":    "",
+            "strategic_direction": "",
+            "gap_vs_your_product": "",
+            "watch_points":       "",
+            "source_urls":        source_urls,
+        }
 
-            human_msg = _build_multimodal_message(prompt, scrapbook_images)
-            response = llm.invoke([SystemMessage(content=system_prompt), human_msg])
-            raw_synthesis = response.content
+        for state_key, section_heading in sections_to_extract:
+            if state_key == "source_urls":
+                gpt_links = _extract_reference_links(raw_synthesis)
+                synthesis["source_urls"] = list(dict.fromkeys(gpt_links + source_urls))
+            else:
+                synthesis[state_key] = _extract_section(raw_synthesis, section_heading)
 
-            synthesis: dict = {
-                "vendor_name": vendor_name,
-                "analysis_mode": analysis_mode,
-                "raw_synthesis": raw_synthesis,
-                "direct_answer": "",
-                "recent_launches": "",
-                "use_cases": "",
-                "technical_details": "",
-                "ui_ux": "",
-                "pricing_signals": "",
-                "strategic_direction": "",
-                "gap_vs_your_product": "",
-                "watch_points": "",
-                "source_urls": source_urls,
-            }
+        info = f"✅ {vendor_name}: synthesized with {len(scrapbook_images)} scrapbook image(s)" if has_images else None
+        return synthesis, info
 
-            for state_key, section_heading in sections_to_extract:
-                if state_key == "source_urls":
-                    # Extract reference links from Claude output + merge with scraped URLs
-                    gpt_links = _extract_reference_links(raw_synthesis)
-                    all_links = list(dict.fromkeys(gpt_links + source_urls))  # dedupe, preserve order
-                    synthesis["source_urls"] = all_links
-                else:
-                    synthesis[state_key] = _extract_section(raw_synthesis, section_heading)
+    except Exception as e:
+        return None, f"Synthesis failed for {vendor_name}: {str(e)}"
 
-            syntheses.append(synthesis)
 
-            if has_images:
-                errors.append(f"✅ {vendor_name}: synthesized with {len(scrapbook_images)} scrapbook image(s)")
+def synthesizer_node(state: AgentState) -> AgentState:
+    from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        except Exception as e:
-            errors.append(f"Synthesis failed for {vendor_name}: {str(e)}")
+    raw_data             = state.get("raw_data", [])
+    research_query       = state.get("research_query", "General competitive overview")
+    analysis_mode        = state.get("analysis_mode", "strategic")
+    target_feature       = state.get("target_feature", "")
+    home_company_content = state.get("home_company_content", "") or "Not available."
+    errors               = list(state.get("errors", []))
+    system_prompt        = _build_system_prompt()
+    prompt_template      = PROMPT_TEMPLATES.get(analysis_mode, STRATEGIC_PROMPT)
+    sections_to_extract  = SECTIONS_BY_MODE.get(analysis_mode, SECTIONS_BY_MODE["strategic"])
+
+    results: dict = {}
+
+    with ThreadPoolExecutor(max_workers=len(raw_data)) as executor:
+        futures = {
+            executor.submit(
+                _synthesize_one,
+                item, research_query, analysis_mode, target_feature,
+                home_company_content, prompt_template, sections_to_extract, system_prompt,
+            ): item["vendor_name"]
+            for item in raw_data
+        }
+        for future in as_completed(futures):
+            vendor_name = futures[future]
+            synthesis, msg = future.result()
+            if msg:
+                errors.append(msg)
+            if synthesis:
+                results[vendor_name] = synthesis
+
+    # Preserve original vendor order
+    syntheses = [results[item["vendor_name"]] for item in raw_data if item["vendor_name"] in results]
 
     return {
         **state,
-        "syntheses": syntheses,
-        "errors": errors,
+        "syntheses":    syntheses,
+        "errors":       errors,
         "current_step": "synthesis_complete",
     }
 
