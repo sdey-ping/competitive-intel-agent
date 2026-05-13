@@ -3,8 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = "gpt-4o"
+ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
+CLAUDE_MODEL = "claude-sonnet-4-6"
+CLAUDE_HAIKU_MODEL = "claude-haiku-4-5-20251001"
 
 GOOGLE_DRIVE_FOLDER_ID = os.getenv("GOOGLE_DRIVE_FOLDER_ID")       # folder for output reports
 GOOGLE_DOC_SCRAPBOOK_ID = os.getenv("GOOGLE_DOC_SCRAPBOOK_ID")     # folder containing per-competitor docs

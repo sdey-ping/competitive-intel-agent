@@ -27,7 +27,7 @@ STEP_LABELS = {
     "web_scraper":          ("🌐", "Scraping websites, blogs, docs & changelogs"),
     "youtube_scraper":      ("🎬", "Fetching YouTube transcripts"),
     "gdoc_reader":          ("📄", "Reading scrapbook notes and images"),
-    "synthesizer":          ("🧠", "GPT-4o synthesizing intelligence per vendor"),
+    "synthesizer":          ("🧠", "Claude Sonnet 4.6 synthesizing intelligence per vendor"),
     "diff_engine":          ("🔄", "Computing delta vs previous run"),
     "report_writer":        ("📝", "Compiling and archiving final report"),
 }

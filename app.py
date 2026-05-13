@@ -306,7 +306,7 @@ with st.sidebar:
                 </div>
                 <div style='display:flex;align-items:center;gap:7px'>
                     <div style='width:5px;height:5px;border-radius:50%;background:#10b981'></div>
-                    <span style='font-size:12px;color:#64748b'>GPT-4o Vision</span>
+                    <span style='font-size:12px;color:#64748b'>Claude Sonnet 4.6</span>
                 </div>
                 <div style='display:flex;align-items:center;gap:7px'>
                     <div style='width:5px;height:5px;border-radius:50%;background:#f59e0b'></div>

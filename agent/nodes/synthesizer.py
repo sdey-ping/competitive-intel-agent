@@ -1,11 +1,11 @@
 import json
 import os
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState, CompetitorSynthesis
-from config.settings import OPENAI_API_KEY, OPENAI_MODEL
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
-llm = ChatOpenAI(model=OPENAI_MODEL, api_key=OPENAI_API_KEY, temperature=0.2)
+llm = ChatAnthropic(model=CLAUDE_MODEL, api_key=ANTHROPIC_API_KEY, temperature=0.2)
 
 YOUR_COMPANY_FILE = os.path.join(
     os.path.dirname(__file__), "..", "..", "config", "your_company.json"
@@ -33,7 +33,7 @@ Rules:
 
 
 def _build_system_prompt() -> str:
-    """Load company name from config and inject it so GPT knows who 'we' are."""
+    """Load company name from config and inject it so Claude knows who 'we' are."""
     try:
         path = os.path.abspath(YOUR_COMPANY_FILE)
         with open(path) as f:
@@ -360,8 +360,8 @@ def _build_multimodal_message(prompt_text: str, images_base64: list) -> HumanMes
     content_blocks = [{"type": "text", "text": prompt_text}]
     for b64 in images_base64:
         content_blocks.append({
-            "type": "image_url",
-            "image_url": {"url": f"data:image/png;base64,{b64}", "detail": "high"},
+            "type": "image",
+            "source": {"type": "base64", "media_type": "image/png", "data": b64},
         })
     return HumanMessage(content=content_blocks)
 
@@ -437,7 +437,7 @@ def synthesizer_node(state: AgentState) -> AgentState:
 
             for state_key, section_heading in sections_to_extract:
                 if state_key == "source_urls":
-                    # Extract reference links from GPT output + merge with scraped URLs
+                    # Extract reference links from Claude output + merge with scraped URLs
                     gpt_links = _extract_reference_links(raw_synthesis)
                     all_links = list(dict.fromkeys(gpt_links + source_urls))  # dedupe, preserve order
                     synthesis["source_urls"] = all_links
@@ -485,7 +485,7 @@ def _extract_section(text: str, section_title: str) -> str:
 
 def _extract_reference_links(text: str) -> list[str]:
     """
-    Extract URLs from the Reference Links section of GPT output.
+    Extract URLs from the Reference Links section of Claude output.
     Only keeps URLs that have a real path (not bare root domains like https://okta.com/).
     Preserves markdown link format [title](url) so UI can render proper labels.
     """

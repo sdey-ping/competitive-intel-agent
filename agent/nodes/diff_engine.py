@@ -1,10 +1,10 @@
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState, DiffResult
 from db.database import get_last_report_for_vendor
-from config.settings import OPENAI_API_KEY, OPENAI_MODEL
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL
 
-llm = ChatOpenAI(model=OPENAI_MODEL, api_key=OPENAI_API_KEY, temperature=0.1)
+llm = ChatAnthropic(model=CLAUDE_MODEL, api_key=ANTHROPIC_API_KEY, temperature=0.1)
 
 DIFF_SYSTEM = """You are a competitive intelligence analyst. Your job is to compare 
 two intelligence snapshots for the same competitor and identify only what is genuinely 

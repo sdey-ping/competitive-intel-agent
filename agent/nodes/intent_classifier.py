@@ -1,11 +1,11 @@
 import json
-from langchain_openai import ChatOpenAI
+from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState
-from config.settings import OPENAI_API_KEY
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_HAIKU_MODEL
 
 # Use a fast, cheap model just for classification
-llm = ChatOpenAI(model="gpt-4o-mini", api_key=OPENAI_API_KEY, temperature=0)
+llm = ChatAnthropic(model=CLAUDE_HAIKU_MODEL, api_key=ANTHROPIC_API_KEY, temperature=0)
 
 CLASSIFIER_SYSTEM = """You are an intent classifier for a competitive intelligence tool used by product managers.
 

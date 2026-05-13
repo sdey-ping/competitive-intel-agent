@@ -2,7 +2,7 @@
 
 An autonomous AI agent that deep-crawls competitor websites and documentation, scrapes YouTube transcripts, and optionally reads your personal Google Doc scrapbook — then synthesizes everything into structured intelligence reports with delta highlights showing only what changed since your last run.
 
-Built with **LangGraph + GPT-4o Vision + Streamlit**.
+Built with **LangGraph + Claude Sonnet 4.6 + Streamlit**.
 
 ---
 
@@ -27,9 +27,9 @@ Built with **LangGraph + GPT-4o Vision + Streamlit**.
 - **Graceful fallback** — if Serper is unavailable, crawls directly from configured URLs
 
 ### 🧠 Intelligence Synthesis
-- **Intent-classified analysis** — GPT-4o-mini auto-detects query intent and routes to the right mode (or user overrides manually)
+- **Intent-classified analysis** — Claude Haiku 4.5 auto-detects query intent and routes to the right mode (or user overrides manually)
 - **4 analysis modes** — each with its own prompt, structure, and UI layout (see below)
-- **GPT-4o Vision** — reads screenshots, pricing tables, roadmap slides, and diagrams from your scrapbook docs
+- **Claude Sonnet 4.6 Vision** — reads screenshots, pricing tables, roadmap slides, and diagrams from your scrapbook docs
 - **Diff engine** — semantic comparison vs previous run, filtered to only highlight changes relevant to your research question
 
 ### 📊 4 Analysis Modes
@@ -44,7 +44,7 @@ Built with **LangGraph + GPT-4o Vision + Streamlit**.
 ### 🗂️ Data Sources
 - Competitor websites, blogs, product docs, and changelogs — crawled 5 levels deep
 - YouTube video transcripts (requires `YOUTUBE_API_KEY`)
-- Personal Google Doc scrapbook (opt-in per run, multi-tab, with inline image extraction via GPT-4o Vision)
+- Personal Google Doc scrapbook (opt-in per run, multi-tab, with inline image extraction via Claude Sonnet 4.6 Vision)
 
 ### 📤 Output & Delivery
 - **Real-time streaming** — progress bar advances as each pipeline node completes, with live synthesis preview
@@ -62,14 +62,14 @@ Built with **LangGraph + GPT-4o Vision + Streamlit**.
 ```
 intent_classifier → web_scraper → youtube_scraper → gdoc_reader
                                                           │
-                                                     synthesizer     ← GPT-4o Vision (text + images)
+                                                     synthesizer     ← Claude Sonnet 4.6 (text + images)
                                                           │
                                                      diff_engine     ← semantic delta vs last run
                                                           │
                                                      report_writer → SQLite + Google Drive (if enabled)
 ```
 
-Each node streams its completion back to the UI in real time — the progress bar advances and a live synthesis preview appears as GPT-4o processes each vendor.
+Each node streams its completion back to the UI in real time — the progress bar advances and a live synthesis preview appears as Claude Sonnet 4.6 processes each vendor.
 
 ### Web Scraper Detail
 
@@ -99,12 +99,12 @@ competitive-intel-agent/
 │   ├── graph.py                    # LangGraph pipeline + stream_agent()
 │   ├── state.py                    # AgentState TypedDict
 │   └── nodes/
-│       ├── intent_classifier.py    # GPT-4o-mini: routes query to 1 of 4 modes
+│       ├── intent_classifier.py    # Claude Haiku 4.5: routes query to 1 of 4 modes
 │       ├── web_scraper.py          # Calls scrape_for_vendor() per competitor
 │       ├── youtube_scraper.py      # Fetches YouTube transcripts via API
 │       ├── gdoc_reader.py          # Reads scrapbook folder (opt-in, all tabs + images)
-│       ├── synthesizer.py          # GPT-4o: 8-section deep analysis, mode-aware
-│       ├── diff_engine.py          # GPT-4o: semantic delta vs previous snapshot
+│       ├── synthesizer.py          # Claude Sonnet 4.6: 8-section deep analysis, mode-aware
+│       ├── diff_engine.py          # Claude Sonnet 4.6: semantic delta vs previous snapshot
 │       └── report_writer.py        # Markdown report, conditional Drive upload
 ├── agent/tools/
 │   ├── scraper_tool.py             # Serper + 5-level BFS deep crawler
@@ -177,7 +177,7 @@ Create a folder in Google Drive. Inside it, create **one Google Doc per competit
     📄 Microsoft Entra
 ```
 
-Each doc supports multiple tabs. The agent reads all tabs and extracts all inline images automatically using GPT-4o Vision. Enable per-run via the **"Include Google Doc Scrapbook"** checkbox in the UI.
+Each doc supports multiple tabs. The agent reads all tabs and extracts all inline images automatically using Claude Sonnet 4.6 Vision. Enable per-run via the **"Include Google Doc Scrapbook"** checkbox in the UI.
 
 Copy the **folder ID** from its Drive URL:
 ```
@@ -196,7 +196,7 @@ streamlit run app.py
 
 | Variable | Required | Description |
 |---|---|---|
-| `OPENAI_API_KEY` | ✅ | GPT-4o + GPT-4o-mini for synthesis, classification, and diff |
+| `ANTHROPIC_API_KEY` | ✅ | Claude Sonnet 4.6 + Claude Haiku 4.5 for synthesis, classification, and diff |
 | `SERPER_API_KEY` | ✅ Recommended | Google search via Serper — powers deep crawl seed discovery. Free tier: 2,500/mo |
 | `GOOGLE_DRIVE_FOLDER_ID` | ⚪ Optional | Drive folder ID for archived report output |
 | `GOOGLE_DOC_SCRAPBOOK_ID` | ⚪ Optional | Scrapbook **folder** ID (not a doc ID) |
@@ -311,8 +311,8 @@ The following are **gitignored** and never leave your machine:
 | Layer | Technology | Notes |
 |---|---|---|
 | AI Orchestration | LangGraph ≥ 0.2 | `stream_mode="updates"` for real-time UI |
-| Intent Classification | GPT-4o-mini | Fast, cheap — 4-mode classifier |
-| Synthesis & Diff | GPT-4o (with Vision) | Full analysis + scrapbook image reading |
+| Intent Classification | Claude Haiku 4.5 | Fast, cheap — 4-mode classifier |
+| Synthesis & Diff | Claude Sonnet 4.6 (with Vision) | Full analysis + scrapbook image reading |
 | Web Scraping | requests + BeautifulSoup4 + lxml | 5-level BFS, Serper-seeded |
 | Search Seed Discovery | Serper API | Google search restricted to vendor domain |
 | Video Transcripts | youtube-transcript-api | No API key needed for transcripts |
