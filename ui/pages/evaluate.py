@@ -212,6 +212,27 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, use_scra
         unsafe_allow_html=True
     )
 
+    def _set_step_running(step_index: int):
+        """Advance bar to the start of a step and show it as in-progress."""
+        frac = step_index / total_steps
+        pct  = int(frac * 100)
+        progress_bar.progress(frac)
+        pct_text.markdown(
+            f"<p style='font-family:JetBrains Mono,monospace;font-size:13px;"
+            f"font-weight:700;color:#1a56db;text-align:right;margin-top:6px'>{pct}%</p>",
+            unsafe_allow_html=True
+        )
+        node_name = PIPELINE_STEPS[step_index]
+        icon, label = STEP_LABELS.get(node_name, ("⚙️", node_name))
+        status_text.markdown(
+            f"<p style='color:#94a3b8;font-size:13px;font-weight:500'>"
+            f"⏳&nbsp; <b>{icon} {label}</b> — running…</p>",
+            unsafe_allow_html=True
+        )
+
+    # Show the first step as running immediately — before any event arrives
+    _set_step_running(0)
+
     try:
         analysis_start = time.time()
         result = None
@@ -229,6 +250,8 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, use_scra
 
             if node_name in PIPELINE_STEPS:
                 completed = PIPELINE_STEPS.index(node_name) + 1
+
+            # Advance bar to end of the completed step
             pct = int((completed / total_steps) * 100)
             progress_bar.progress(completed / total_steps)
             pct_text.markdown(
@@ -256,6 +279,10 @@ def _run_with_progress(selected_vendors, research_query, save_to_drive, use_scra
                 f" — done{extra}</p>",
                 unsafe_allow_html=True
             )
+
+            # If there's a next step, immediately show it as running
+            if completed < total_steps:
+                _set_step_running(completed)
 
             syntheses = partial_state.get("syntheses", [])
             if syntheses and node_name == "synthesizer":
