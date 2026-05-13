@@ -3,9 +3,34 @@ import os
 from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import HumanMessage, SystemMessage
 from agent.state import AgentState, CompetitorSynthesis
-from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL
+from config.settings import ANTHROPIC_API_KEY, CLAUDE_MODEL, CLAUDE_HAIKU_MODEL
 
-llm = ChatAnthropic(model=CLAUDE_MODEL, api_key=ANTHROPIC_API_KEY, temperature=0.2)
+llm       = ChatAnthropic(model=CLAUDE_MODEL,       api_key=ANTHROPIC_API_KEY, temperature=0.2)
+llm_haiku = ChatAnthropic(model=CLAUDE_HAIKU_MODEL, api_key=ANTHROPIC_API_KEY, temperature=0.0)
+
+_SCOPE_QUERY_PROMPT = """\
+A researcher asked this question about multiple vendors at once:
+
+"{research_query}"
+
+Rewrite it as a single-vendor question focused ONLY on: {vendor_name}
+- Remove all mentions of other vendors
+- Keep the core analytical intent (e.g. "does X have Y?", "how does X do Z?")
+- Return only the rewritten question, nothing else"""
+
+
+def _scope_query_to_vendor(research_query: str, vendor_name: str) -> str:
+    """Use Haiku to rewrite a cross-vendor research question as single-vendor."""
+    try:
+        resp = llm_haiku.invoke([HumanMessage(content=_SCOPE_QUERY_PROMPT.format(
+            research_query=research_query,
+            vendor_name=vendor_name,
+        ))])
+        scoped = resp.content.strip().strip('"').strip("'")
+        return scoped if scoped else research_query
+    except Exception:
+        return research_query
+
 
 YOUR_COMPANY_FILE = os.path.join(
     os.path.dirname(__file__), "..", "..", "config", "your_company.json"
@@ -399,6 +424,9 @@ def _synthesize_one(
         return None, f"No content retrieved for {vendor_name} — skipping synthesis."
 
     try:
+        # Rewrite the question to focus solely on this vendor, eliminating cross-vendor framing
+        scoped_query = _scope_query_to_vendor(research_query, vendor_name)
+
         image_note = (
             f"\n=== SCRAPBOOK IMAGES ===\n"
             f"{len(scrapbook_images)} image(s) attached below. Analyze every visible detail.\n"
@@ -407,8 +435,8 @@ def _synthesize_one(
 
         prompt = prompt_template.format(
             vendor_name=vendor_name,
-            research_query=research_query,
-            target_feature=target_feature or research_query,
+            research_query=scoped_query,
+            target_feature=target_feature or scoped_query,
             home_company_content=home_company_content[:20000],
             web_content=item.get("web_content", "Not available")[:40000],
             docs_content=item.get("docs_content", "Not available")[:40000],
