@@ -36,13 +36,14 @@ SERPER_ENDPOINT    = "https://google.serper.dev/search"
 SERPER_NUM_SEEDS   = 8      # seed URLs per domain from Serper
 MAX_DEPTH          = 5      # BFS levels deep from each seed
 TOP_K_PER_LEVEL    = 4      # max links to follow per page at each BFS level
-MAX_PAGES_TOTAL    = 40     # hard cap on total pages fetched per domain
+MAX_PAGES_TOTAL    = 20     # hard cap on total pages fetched per domain
 MAX_CHARS_PER_PAGE = 8000   # truncate each page to keep context manageable
 MIN_CONTENT_SCORE  = 2      # min query-word hits required to keep a page
-REQUEST_TIMEOUT    = 12     # seconds per HTTP request
-CRAWL_DELAY        = 0.25   # seconds between requests
+REQUEST_TIMEOUT    = 6      # seconds per HTTP request — slow pages are usually JS shells caught by Jina fallback
+CRAWL_DELAY        = 0.1    # seconds between requests
+FETCH_WORKERS      = 6      # concurrent page fetches within a single BFS level
 JINA_PREFIX        = "https://r.jina.ai/"
-JINA_TIMEOUT       = 30     # Jina renders JS server-side — needs more time
+JINA_TIMEOUT       = 20     # Jina renders JS server-side — needs more time than direct fetch
 SPA_SHELL_THRESHOLD = 200   # chars below which we treat a page as an unrendered SPA shell
 
 # URL path segments that signal high-value product content — prioritized in BFS
@@ -229,58 +230,75 @@ def _bfs_crawl(
     """
     BFS crawl from seed_urls up to MAX_DEPTH levels.
 
+    Each BFS level fetches all queued URLs concurrently (up to FETCH_WORKERS
+    threads) instead of sequentially, dramatically reducing wall-clock time.
+
     At each level:
-      - Score all discovered child links by query relevance
+      - Fetch all URLs in the current frontier in parallel
+      - Score discovered child links by query relevance
       - Follow only the TOP_K_PER_LEVEL highest-scoring ones
       - Keep pages whose content scores >= MIN_CONTENT_SCORE
 
     Returns (combined_text, visited_url_list).
     """
-    query_words = set(research_query.lower().split())
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    query_words   = set(research_query.lower().split())
     pages_fetched = 0
     content_parts = []
-    visited_urls = []
+    visited_urls  = []
 
-    # BFS queue: (url, depth)
-    queue = deque()
+    # frontier is a list of (url, depth) for the current BFS level
+    frontier: list[tuple[str, int]] = []
     for url in seed_urls:
         n = _normalize(url)
         if n not in visited:
-            queue.append((n, 0))
+            frontier.append((n, 0))
             visited.add(n)
 
-    while queue and pages_fetched < MAX_PAGES_TOTAL:
-        url, depth = queue.popleft()
+    while frontier and pages_fetched < MAX_PAGES_TOTAL:
+        # Respect hard cap — trim frontier if needed
+        batch = frontier[:MAX_PAGES_TOTAL - pages_fetched]
+        frontier = []
 
-        time.sleep(CRAWL_DELAY)
-        title, text, child_links = _fetch_page(url)
-        pages_fetched += 1
+        # Fetch entire batch in parallel
+        with ThreadPoolExecutor(max_workers=FETCH_WORKERS) as executor:
+            futures = {executor.submit(_fetch_page, url): (url, depth)
+                       for url, depth in batch}
+            for future in as_completed(futures):
+                url, depth = futures[future]
+                time.sleep(CRAWL_DELAY)
+                pages_fetched += 1
 
-        # Score and keep page content if relevant
-        if text and not text.startswith("[Fetch error"):
-            score = _content_score(text, query_words)
-            if score >= MIN_CONTENT_SCORE or depth == 0:
-                # depth==0 seeds always kept (they came from Serper/config)
-                header = f"--- [{title or url}] {url} ---"
-                content_parts.append(f"{header}\n{text}")
-                visited_urls.append(url)
+                try:
+                    title, text, child_links = future.result()
+                except Exception:
+                    continue
 
-        # Enqueue children if not at max depth
-        if depth < MAX_DEPTH:
-            # Score and rank child links
-            scored = sorted(
-                [(l, _url_score(l, query_words)) for l in child_links if l not in visited],
-                key=lambda x: x[1],
-                reverse=True,
-            )
-            added = 0
-            for child_url, _ in scored:
-                if added >= TOP_K_PER_LEVEL:
-                    break
-                if child_url not in visited:
-                    visited.add(child_url)
-                    queue.append((child_url, depth + 1))
-                    added += 1
+                # Score and keep page if relevant
+                if text and not text.startswith("[Fetch error"):
+                    score = _content_score(text, query_words)
+                    if score >= MIN_CONTENT_SCORE or depth == 0:
+                        header = f"--- [{title or url}] {url} ---"
+                        content_parts.append(f"{header}\n{text}")
+                        visited_urls.append(url)
+
+                # Enqueue children for next BFS level
+                if depth < MAX_DEPTH:
+                    scored = sorted(
+                        [(l, _url_score(l, query_words))
+                         for l in child_links if l not in visited],
+                        key=lambda x: x[1],
+                        reverse=True,
+                    )
+                    added = 0
+                    for child_url, _ in scored:
+                        if added >= TOP_K_PER_LEVEL:
+                            break
+                        if child_url not in visited:
+                            visited.add(child_url)
+                            frontier.append((child_url, depth + 1))
+                            added += 1
 
     return "\n\n".join(content_parts), visited_urls
 
