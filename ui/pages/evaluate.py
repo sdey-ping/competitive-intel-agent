@@ -21,8 +21,6 @@ CUSTOM_CSS = """
 .direct-answer-vendor { font-size:11px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#1a56db; margin-bottom:8px; }
 .direct-answer-text { font-size:14px; color:#1e3a5f; line-height:1.7; }
 .positioning-statement { background:#0f172a; color:#f8fafc; border-radius:12px; padding:20px 24px; font-size:16px; font-weight:600; line-height:1.5; margin:16px 0; font-style:italic; }
-.ref-links-box { background:#f8f9fa; border:1px solid #e8e4dd; border-radius:10px; padding:14px 18px; margin-top:12px; }
-.ref-links-label { font-size:10px; font-weight:700; letter-spacing:0.07em; text-transform:uppercase; color:#94a3b8; margin-bottom:8px; }
 .save-pill { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
 .nosave-pill { display:inline-flex; align-items:center; gap:6px; background:#fffbeb; border:1px solid #fcd34d; color:#b45309; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
 .scrapbook-on { display:inline-flex; align-items:center; gap:6px; background:#f0fdf4; border:1px solid #86efac; color:#15803d; border-radius:20px; padding:5px 14px; font-size:12px; font-weight:600; }
@@ -400,25 +398,18 @@ def _render_reference_links(synthesis: dict):
     if not deep_links:
         return
 
-    st.markdown(
-        "<div class='ref-links-box'>"
-        "<div class='ref-links-label'>📎 Reference Sources</div>",
-        unsafe_allow_html=True
-    )
-    for entry in deep_links:
-        if entry.startswith("["):
-            # Already formatted as [Title](url)
-            st.markdown(f"- {entry}")
-        else:
-            # Bare URL — derive readable label from path
-            m = re.search(r'https?://([^\s\)]+)', entry)
-            if m:
-                url = m.group(0).rstrip(".,;)")
-                path_parts = url.split("//", 1)[-1].split("/")
-                label = " › ".join(p.replace("-", " ").replace("_", " ").title()
-                                   for p in path_parts if p)[:80]
-                st.markdown(f"- [{label}]({url})")
-    st.markdown("</div>", unsafe_allow_html=True)
+    with st.expander(f"📎 Reference Sources ({len(deep_links)})", expanded=False):
+        for entry in deep_links:
+            if entry.startswith("["):
+                st.markdown(f"- {entry}")
+            else:
+                m = re.search(r'https?://([^\s\)]+)', entry)
+                if m:
+                    url = m.group(0).rstrip(".,;)")
+                    path_parts = url.split("//", 1)[-1].split("/")
+                    label = " › ".join(p.replace("-", " ").replace("_", " ").title()
+                                       for p in path_parts if p)[:80]
+                    st.markdown(f"- [{label}]({url})")
 
 
 def _render_feature_deep_dive(result: dict):
