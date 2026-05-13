@@ -48,43 +48,32 @@ def report_writer_node(state: AgentState) -> AgentState:
 
     if save_to_drive:
         drive_start = time.time()
-        report_id = save_report(
-            research_query=research_query,
-            vendors_covered=vendors,
-            report_markdown=report_markdown,
-            gdrive_link="",
+        gdrive_label = ""
+    else:
+        gdrive_label = "__local_only__"
+
+    report_id = save_report(
+        research_query=research_query,
+        vendors_covered=vendors,
+        report_markdown=report_markdown,
+        gdrive_link=gdrive_label,
+    )
+    for synthesis in syntheses:
+        vendor_name = synthesis["vendor_name"]
+        diff = diff_lookup.get(vendor_name, {})
+        save_diff_log(
+            report_id=report_id,
+            vendor_name=vendor_name,
+            previous_snapshot=diff.get("delta_summary", ""),
+            new_snapshot=synthesis["raw_synthesis"],
+            delta_summary=diff.get("delta_summary", ""),
         )
-        for synthesis in syntheses:
-            vendor_name = synthesis["vendor_name"]
-            diff = diff_lookup.get(vendor_name, {})
-            save_diff_log(
-                report_id=report_id,
-                vendor_name=vendor_name,
-                previous_snapshot=diff.get("delta_summary", ""),
-                new_snapshot=synthesis["raw_synthesis"],
-                delta_summary=diff.get("delta_summary", ""),
-            )
+
+    if save_to_drive:
         date_file = now.strftime("%Y-%m-%d")
         filename = f"CompIntel — {date_file} — {research_query[:40]}"
         gdrive_link = upload_report_to_drive(report_markdown, filename)
         drive_duration = round(time.time() - drive_start, 1)
-    else:
-        report_id = save_report(
-            research_query=research_query,
-            vendors_covered=vendors,
-            report_markdown=report_markdown,
-            gdrive_link="__local_only__",
-        )
-        for synthesis in syntheses:
-            vendor_name = synthesis["vendor_name"]
-            diff = diff_lookup.get(vendor_name, {})
-            save_diff_log(
-                report_id=report_id,
-                vendor_name=vendor_name,
-                previous_snapshot=diff.get("delta_summary", ""),
-                new_snapshot=synthesis["raw_synthesis"],
-                delta_summary=diff.get("delta_summary", ""),
-            )
 
     return {
         **state,

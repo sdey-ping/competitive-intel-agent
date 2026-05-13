@@ -51,8 +51,8 @@ def _diff_one(synthesis: dict, research_query: str) -> tuple:
             vendor_name=vendor_name,
             research_query=research_query,
             prev_date=last.get("created_at", "unknown date"),
-            previous=last.get("new_snapshot", "")[:3000],
-            current=current_synthesis[:3000],
+            previous=last.get("new_snapshot", "")[:8000],
+            current=current_synthesis[:8000],
         )
         response = llm.invoke([
             SystemMessage(content=DIFF_SYSTEM),
