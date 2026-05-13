@@ -1,3 +1,4 @@
+import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from agent.state import AgentState
 from agent.tools.scraper_tool import scrape_for_vendor
@@ -15,7 +16,20 @@ def _split_urls(raw: list[str]) -> list[str]:
     return urls
 
 
-def _scrape_one(vendor_name: str, research_query: str, existing: dict) -> tuple:
+def _vendor_scoped_query(research_query: str, current_vendor: str, all_vendors: list[str]) -> str:
+    """
+    Strip other vendor names from the research query before passing it to Serper/BFS.
+    This prevents Okta's Serper search from including "Transmit Security" as a keyword,
+    which would cause Google to surface Okta pages that mention competitors.
+    """
+    scoped = research_query
+    for v in all_vendors:
+        if v.lower() != current_vendor.lower():
+            scoped = re.sub(re.escape(v), "", scoped, flags=re.IGNORECASE)
+    return " ".join(scoped.split())
+
+
+def _scrape_one(vendor_name: str, research_query: str, all_vendors: list[str], existing: dict) -> tuple:
     """Scrape a single vendor. Returns (vendor_name, result_dict, error_str|None)."""
     competitor = get_competitor_by_name(vendor_name)
     if not competitor:
@@ -30,9 +44,12 @@ def _scrape_one(vendor_name: str, research_query: str, existing: dict) -> tuple:
         competitor.get("changelog_url", ""),
     ])
 
+    # Use a vendor-scoped query so Serper/BFS doesn't pull in competitor pages
+    scoped_query = _vendor_scoped_query(research_query, vendor_name, all_vendors)
+
     result = scrape_for_vendor(
         vendor_name=vendor_name,
-        research_query=research_query,
+        research_query=scoped_query,
         marketing_urls=marketing_urls,
         technical_urls=technical_urls,
     )
@@ -65,7 +82,7 @@ def web_scraper_node(state: AgentState) -> AgentState:
 
     with ThreadPoolExecutor(max_workers=len(vendors)) as executor:
         futures = {
-            executor.submit(_scrape_one, v, research_query, existing): v
+            executor.submit(_scrape_one, v, research_query, vendors, existing): v
             for v in vendors
         }
         for future in as_completed(futures):

@@ -29,7 +29,10 @@ Rules:
   If the question requires a SWOT, the Direct Answer IS the full SWOT. If it requires a comparison,
   the Direct Answer IS the full comparison. Match length to complexity.
 - When comparing to "our product" or "your product", use ONLY the content provided in the
-  YOUR PRODUCT section of the prompt. Do not invent capabilities we may or may not have."""
+  YOUR PRODUCT section of the prompt. Do not invent capabilities we may or may not have.
+- VENDOR SCOPE: Each call analyzes ONE vendor. The vendor to analyze is named at the top of the
+  user prompt. Never describe, compare, or quote capabilities of any other company in your output,
+  even if their name appears in the source content or research question."""
 
 
 def _build_system_prompt() -> str:
