@@ -50,6 +50,7 @@ def _build_system_prompt() -> str:
 
 FEATURE_DEEP_DIVE_PROMPT = """
 Competitor: {vendor_name}
+IMPORTANT: You are analyzing {vendor_name} ONLY. If the research question mentions other vendors by name, answer it exclusively from {vendor_name}'s perspective using only the source content below. Do not analyze, describe, or comment on any other vendor.
 Research Question: {research_query}
 Feature in Focus: {target_feature}
 
@@ -116,6 +117,7 @@ RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
 
 LANDSCAPE_SCAN_PROMPT = """
 Competitor: {vendor_name}
+IMPORTANT: You are analyzing {vendor_name} ONLY. If the research question mentions other vendors by name, answer it exclusively from {vendor_name}'s perspective using only the source content below. Do not analyze, describe, or comment on any other vendor.
 Research Question: {research_query}
 
 === YOUR PRODUCT (for comparison) ===
@@ -166,6 +168,7 @@ RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
 
 STRATEGIC_PROMPT = """
 Competitor: {vendor_name}
+IMPORTANT: You are analyzing {vendor_name} ONLY. If the research question mentions other vendors by name, answer it exclusively from {vendor_name}'s perspective using only the source content below. Do not analyze, describe, or comment on any other vendor.
 Research Focus: {research_query}
 
 === YOUR PRODUCT (for comparison) ===
@@ -253,6 +256,7 @@ RULES: (1) Use full deep URLs — NOT root domains like https://okta.com.
 
 BATTLE_CARD_PROMPT = """
 Competitor: {vendor_name}
+IMPORTANT: You are analyzing {vendor_name} ONLY. If the research question mentions other vendors by name, answer it exclusively from {vendor_name}'s perspective using only the source content below. Do not analyze, describe, or comment on any other vendor.
 Research Question: {research_query}
 
 === YOUR PRODUCT (for comparison) ===
