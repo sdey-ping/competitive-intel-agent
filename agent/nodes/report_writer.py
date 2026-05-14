@@ -115,6 +115,41 @@ def _diff_section(diffs):
     return lines
 
 
+def _sources_section(synthesis: dict) -> list:
+    """Build a Reference Sources markdown block for one vendor."""
+    import re
+    urls = synthesis.get("source_urls", [])
+    if not urls:
+        return []
+
+    def _is_deep_link(entry: str) -> bool:
+        m = re.search(r'https?://([^\s\)]+)', entry)
+        if not m:
+            return False
+        full = m.group(0).rstrip(".,;)")
+        path = full.split("//", 1)[-1]
+        parts = path.split("/", 1)
+        return len(parts) >= 2 and bool(parts[1].strip("/"))
+
+    deep = [u for u in urls if _is_deep_link(u)]
+    if not deep:
+        return []
+
+    lines = ["", "#### Reference Sources", ""]
+    for entry in deep:
+        if entry.startswith("["):
+            lines.append(f"- {entry}")
+        else:
+            m = re.search(r'https?://([^\s\)]+)', entry)
+            if m:
+                url = m.group(0).rstrip(".,;)")
+                path_parts = url.split("//", 1)[-1].split("/")
+                label = " › ".join(p.replace("-", " ").replace("_", " ").title()
+                                   for p in path_parts if p)[:80]
+                lines.append(f"- [{label}]({url})")
+    return lines
+
+
 def _build_feature_deep_dive_report(syntheses, diffs, diff_lookup, research_query,
                                      vendors, analysis_mode, target_feature,
                                      date_str, time_str, errors, **_):
@@ -143,10 +178,9 @@ def _build_feature_deep_dive_report(syntheses, diffs, diff_lookup, research_quer
             "",
             "### Watch Points",
             s.get("watch_points", "_No data_"),
-            "",
-            "---",
-            "",
         ]
+        lines += _sources_section(s)
+        lines += ["", "---", ""]
     if errors:
         lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
     return "\n".join(lines)
@@ -173,10 +207,9 @@ def _build_landscape_scan_report(syntheses, diffs, diff_lookup, research_query,
             "",
             "### Gaps in Their Activity",
             s.get("gap_vs_your_product", "_No data_"),
-            "",
-            "---",
-            "",
         ]
+        lines += _sources_section(s)
+        lines += ["", "---", ""]
     if errors:
         lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
     return "\n".join(lines)
@@ -219,10 +252,9 @@ def _build_strategic_report(syntheses, diffs, diff_lookup, research_query,
             "",
             "### 👁️ Key Watch Points",
             s.get("watch_points", "_No data_"),
-            "",
-            "---",
-            "",
         ]
+        lines += _sources_section(s)
+        lines += ["", "---", ""]
     if errors:
         lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
     return "\n".join(lines)
@@ -258,10 +290,9 @@ def _build_battle_card_report(syntheses, diffs, diff_lookup, research_query,
             "",
             "### 🎯 One-Line Positioning",
             s.get("watch_points", "_No data_"),
-            "",
-            "---",
-            "",
         ]
+        lines += _sources_section(s)
+        lines += ["", "---", ""]
     if errors:
         lines += ["## ⚠️ Errors", ""] + [f"- {e}" for e in errors]
     return "\n".join(lines)
