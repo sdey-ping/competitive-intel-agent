@@ -308,6 +308,16 @@ def get_report_by_id(report_id: int):
     return dict(row) if row else None
 
 
+def update_report_gdrive_link(report_id: int, gdrive_link: str):
+    conn = get_connection()
+    conn.execute(
+        "UPDATE reports SET gdrive_link=? WHERE id=?",
+        (gdrive_link, report_id),
+    )
+    conn.commit()
+    conn.close()
+
+
 def get_last_report_for_vendor(vendor_name: str):
     """Return the most recent diff_log entry for a vendor (used by diff engine)."""
     conn = get_connection()

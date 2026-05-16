@@ -2,7 +2,7 @@ import time
 from datetime import datetime
 from agent.state import AgentState
 from agent.tools.gdrive_tool import upload_report_to_drive
-from db.database import save_report, save_diff_log
+from db.database import save_report, save_diff_log, update_report_gdrive_link
 
 
 def report_writer_node(state: AgentState) -> AgentState:
@@ -46,17 +46,12 @@ def report_writer_node(state: AgentState) -> AgentState:
     gdrive_link = ""
     drive_duration = 0.0
 
-    if save_to_drive:
-        drive_start = time.time()
-        gdrive_label = ""
-    else:
-        gdrive_label = "__local_only__"
-
+    # Save report first (Drive link unknown yet)
     report_id = save_report(
         research_query=research_query,
         vendors_covered=vendors,
         report_markdown=report_markdown,
-        gdrive_link=gdrive_label,
+        gdrive_link="__local_only__" if not save_to_drive else "",
     )
     for synthesis in syntheses:
         vendor_name = synthesis["vendor_name"]
@@ -70,10 +65,13 @@ def report_writer_node(state: AgentState) -> AgentState:
         )
 
     if save_to_drive:
+        drive_start = time.time()
         date_file = now.strftime("%Y-%m-%d")
         filename = f"CompIntel — {date_file} — {research_query[:40]}"
         gdrive_link = upload_report_to_drive(report_markdown, filename)
         drive_duration = round(time.time() - drive_start, 1)
+        # Update the DB row with the real link now that upload is done
+        update_report_gdrive_link(report_id, gdrive_link)
 
     return {
         **state,
